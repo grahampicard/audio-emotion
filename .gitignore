@@ -1,11 +1,4 @@
-data/interim/stft
-data/interim/wave
-data/raw/CAL500_32kps
-data/raw/CAL500_DeltaMFCCFeatures
-data/raw/CAL500_noAudioFeatures
-data/raw/chroma
-data/raw/dmfcc
-data/raw/mel_2048_1024
-data/raw/mfcc_2048_1024
-data/raw/SegLabelHard
-data/raw/SegLabelSoft
+data/interim/features/stft
+data/interim/features/wave
+data/raw/*
+data/raw - (unzip into a folder named raw).zip
