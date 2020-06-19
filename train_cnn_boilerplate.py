@@ -5,6 +5,7 @@ import torch
 from torch import manual_seed
 from torch import nn
 from torch import optim
+from torch.autograd import Variable # add gradients to tensors
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
@@ -12,8 +13,18 @@ from torch.utils.data.sampler import SubsetRandomSampler
   
 # user-created files
 from models.cnn_boilerplate import CNN
+from models.cnn_boilerplate import CNN2
 from source.data_loaders import load_stft_data
 
+
+def to_one_hot(y,device):
+    """converts a NxC input to a NxC dimnensional one-hot encoding
+    """
+    max_idx = torch.argmax(y, 0, keepdim=True).to(device)
+    one_hot = torch.FloatTensor(y.shape).to(device)
+    one_hot.zero_()
+    one_hot.scatter_(0, max_idx, 1)
+    return one_hot
 
 def train(model, optimizer, dataloader, device, epoch, args):
     
@@ -38,15 +49,25 @@ def train(model, optimizer, dataloader, device, epoch, args):
 
     return model
 
+def test(model, dataloader, device, args):
+
+    for batch_idx, (data, target) in enumerate(dataloader):
+        data, target = data.to(device), target.to(device)
+
+        output = model(data)
+        pred = to_one_hot(output, device)
+
+    pass 
+
 
 if __name__ == "__main__":
 
     # Include Hyperparameters for developing our Neural Network
     parser = argparse.ArgumentParser(description='Spectrogram + Emotion CNN')
     parser.add_argument('--batch-size', type=int, default=5, metavar='N', help='input batch size for training (default: 5)')
-    parser.add_argument('--test-batch-size', type=int, default=50, metavar='N', help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=5, metavar='N', help='number of epochs to train (default: 5)')
-    parser.add_argument('--lr', type=float, default=0.1, metavar='LR', help='learning rate (default: 0.01)')
+    parser.add_argument('--test-batch-size', type=int, default=5, metavar='N', help='input batch size for testing (default: 1000)')
+    parser.add_argument('--epochs', type=int, default=1, metavar='N', help='number of epochs to train (default: 5)')
+    parser.add_argument('--lr', type=float, default=0.5, metavar='LR', help='learning rate (default: 0.01)')
     parser.add_argument('--momentum', type=float, default=0.1, metavar='M', help='SGD momentum (default: 0.5)')
     parser.add_argument('--no-cuda', action='store_true', default=False, help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
@@ -58,12 +79,15 @@ if __name__ == "__main__":
     manual_seed(args.seed)
     
     # Load training data
-    train_features, train_labels, test_features, test_labels = load_stft_data(split=0.95)
+    train_features, train_labels, test_features, test_labels = load_stft_data(split=.8)
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 
+    test_dataset = TensorDataset(test_features, test_labels)
+    test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size, **kwargs)
+
     # Instantiate model
-    model = CNN().to(device)    
+    model = CNN2().to(device)    
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     for epoch in range(1, args.epochs + 1):
