@@ -13,9 +13,8 @@ from torch.utils.data import TensorDataset
 from torch.utils.data.sampler import SubsetRandomSampler
   
 # user-created files
-from models.cnn_boilerplate import CNN
-from models.cnn_small import CNN_small
-from source.data_loaders import load_stft_data
+from models.feed_forward_metadata import FCNN
+from source.data_loaders import load_spotify_metadata  
 
 
 def to_one_hot(y,device):
@@ -65,10 +64,10 @@ if __name__ == "__main__":
 
     # Include Hyperparameters for developing our Neural Network
     parser = argparse.ArgumentParser(description='Spectrogram + Emotion CNN')
-    parser.add_argument('--batch-size', type=int, default=1, metavar='N', help='input batch size for training (default: 5)')
+    parser.add_argument('--batch-size', type=int, default=100, metavar='N', help='input batch size for training (default: 5)')
     parser.add_argument('--test-batch-size', type=int, default=5, metavar='N', help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=5, metavar='N', help='number of epochs to train (default: 5)')
-    parser.add_argument('--lr', type=float, default=0.5, metavar='LR', help='learning rate (default: 0.01)')
+    parser.add_argument('--epochs', type=int, default=50, metavar='N', help='number of epochs to train (default: 5)')
+    parser.add_argument('--lr', type=float, default=0.1, metavar='LR', help='learning rate (default: 0.01)')
     parser.add_argument('--momentum', type=float, default=0.1, metavar='M', help='SGD momentum (default: 0.5)')
     parser.add_argument('--no-cuda', action='store_true', default=False, help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
@@ -80,7 +79,7 @@ if __name__ == "__main__":
     manual_seed(args.seed)
     
     # Load training data
-    train_features, train_labels, test_features, test_labels, train_idxs, test_idxs = load_stft_data(split=.8)
+    train_features, train_labels, test_features, test_labels, train_idxs, test_idxs = load_spotify_metadata(split=.8)
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 
@@ -88,8 +87,8 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size, **kwargs)
 
     # Instantiate model
-    model = CNN_small().to(device)    
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    model = FCNN().to(device)
+    optimizer = optim.RMSprop(model.parameters(), lr=args.lr)
 
     for epoch in range(1, args.epochs + 1):
         train(model, optimizer, train_loader, device, epoch, args)
@@ -100,3 +99,6 @@ if __name__ == "__main__":
         train_idx_df = pd.DataFrame(train_idxs, columns=['idx']).assign(category='train')
         test_idx_df = pd.DataFrame(test_idxs, columns=['idx']).assign(category='test')
         pd.concat([train_idx_df, test_idx_df]).to_csv('./data/processed/cnn-boilerplate-split.csv', index=False)
+
+
+    pred = model(test_features.cuda())

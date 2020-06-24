@@ -11,8 +11,11 @@ def load_stft_data(split=0.8, seed=123, label_type='one-hot'):
     tensor_files = os.listdir(stft_dir)
 
     # add options for labels to use!
-    if label_type == 'soft': csv_file = 'emotional_scores'
-    if label_type == 'one-hot': csv_file = 'one_hot_top_emotion'
+    if label_type == 'soft':
+        csv_file = 'emotional_scores'
+    if label_type == 'one-hot':
+        csv_file = 'one_hot_top_emotion'
+    
     label_df = pd.read_csv(f'./data/interim/labels/{csv_file}.csv', index_col='song')
 
     # add features
@@ -45,4 +48,43 @@ def load_stft_data(split=0.8, seed=123, label_type='one-hot'):
     features_train, labels_train = features[train_split], labels[train_split]
     features_test, labels_test = features[test_split], labels[test_split]
 
-    return features_train, labels_train, features_test, labels_test
+    return features_train, labels_train, features_test, labels_test, train_split, test_split
+
+
+def load_spotify_metadata(split=0.8, seed=123, label_type='one-hot'):
+
+    # add options for labels to use!
+    if label_type == 'soft':
+        csv_file = 'emotional_scores'
+    if label_type == 'one-hot':
+        csv_file = 'one_hot_top_emotion'
+    
+    label_df = pd.read_csv(f'./data/interim/labels/{csv_file}.csv', index_col='song')
+    feature_df = pd.read_csv('./data/interim/metadata/spotify_features.csv', index_col='cal_id')
+
+    label_df = label_df.reindex(feature_df.index)
+
+    assert label_df.shape[0] == feature_df.shape[0]
+
+    # add features
+    features = feature_df.to_numpy()
+    labels = label_df.to_numpy()
+
+    # create train & test splits
+    size = len(features)
+    idxs = list(range(size))
+    split_idx = int(np.floor(split * size))
+
+    np.random.seed(seed)
+    np.random.shuffle(idxs)
+
+    train_split = idxs[:split_idx]
+    test_split = idxs[split_idx:]
+    
+    features = torch.FloatTensor(features)
+    labels = torch.FloatTensor(labels)
+
+    features_train, labels_train = features[train_split], labels[train_split]
+    features_test, labels_test = features[test_split], labels[test_split]
+
+    return features_train, labels_train, features_test, labels_test, train_split, test_split
