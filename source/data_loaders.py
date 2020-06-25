@@ -4,18 +4,13 @@ import pandas as pd
 import torch
 
 
-def load_stft_data(split=0.8, seed=123, label_type='one-hot'):
+def load_stft_data(split=0.8, seed=123, csv_file='one_hot_top_emotion'):
 
     # load files
     stft_dir = './data/interim/features/stft'
     tensor_files = os.listdir(stft_dir)
 
-    # add options for labels to use!
-    if label_type == 'soft':
-        csv_file = 'emotional_scores'
-    if label_type == 'one-hot':
-        csv_file = 'one_hot_top_emotion'
-    
+    # add options for labels to use!  
     label_df = pd.read_csv(f'./data/interim/labels/{csv_file}.csv', index_col='song')
 
     # add features
@@ -51,13 +46,9 @@ def load_stft_data(split=0.8, seed=123, label_type='one-hot'):
     return features_train, labels_train, features_test, labels_test, train_split, test_split
 
 
-def load_spotify_metadata(split=0.8, seed=123, label_type='one-hot'):
+def load_spotify_metadata(split=0.8, seed=123, csv_file='one_hot_top_emotion'):
 
     # add options for labels to use!
-    if label_type == 'soft':
-        csv_file = 'emotional_scores'
-    if label_type == 'one-hot':
-        csv_file = 'one_hot_top_emotion'
     
     label_df = pd.read_csv(f'./data/interim/labels/{csv_file}.csv', index_col='song')
     feature_df = pd.read_csv('./data/interim/metadata/spotify_features.csv', index_col='cal_id')

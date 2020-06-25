@@ -24,7 +24,8 @@ if __name__ == "__main__":
     if args.labels:
         idx_file = './data/raw/CAL500_noAudioFeatures/songNames.txt'
         cols_file = './data/raw/CAL500_noAudioFeatures/vocab.txt'
-        data_file = './data/raw/CAL500_noAudioFeatures/softAnnotations.txt'
+        # data_file = './data/raw/CAL500_noAudioFeatures/softAnnotations.txt'
+        data_file = './data/raw/CAL500_noAudioFeatures/hardAnnotations.txt'
 
         with open(idx_file, 'r') as f:
             idx = f.read().splitlines()

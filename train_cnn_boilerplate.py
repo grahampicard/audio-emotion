@@ -80,7 +80,7 @@ if __name__ == "__main__":
     manual_seed(args.seed)
     
     # Load training data
-    train_features, train_labels, test_features, test_labels, train_idxs, test_idxs = load_stft_data(split=.8)
+    train_features, train_labels, test_features, test_labels, train_idxs, test_idxs = load_stft_data(split=.8, csv_file='emotional_scores')
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 
