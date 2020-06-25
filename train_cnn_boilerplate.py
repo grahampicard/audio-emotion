@@ -69,8 +69,8 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size', type=int, default=8, metavar='N', help='input batch size for training (default: 8)')
     parser.add_argument('--test-batch-size', type=int, default=10, metavar='N', help='input batch size for testing (default: 10)')
     parser.add_argument('--epochs', type=int, default=5, metavar='N', help='number of epochs to train (default: 5)')
-    parser.add_argument('--lr', type=float, default=0.01, metavar='LR', help='learning rate (default: 0.01)')
-    parser.add_argument('--momentum', type=float, default=0.1, metavar='M', help='SGD momentum (default: 0.5)')
+    #parser.add_argument('--lr', type=float, default=0.01, metavar='LR', help='learning rate (default: 0.01)')
+    #parser.add_argument('--momentum', type=float, default=0.1, metavar='M', help='SGD momentum (default: 0.5)')
     parser.add_argument('--no-cuda', action='store_true', default=False, help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     # Instantiate model
     model = CNN_small().to(device)
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    optimizer = optim.Adam(model.parameters())
 
     for epoch in range(1, args.epochs + 1):
         train(model, optimizer, train_loader, device, epoch, args)
