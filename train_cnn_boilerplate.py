@@ -10,7 +10,7 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
 from torch.utils.data.sampler import SubsetRandomSampler
-  
+
 # user-created files
 from models.cnn_boilerplate import CNN
 from models.cnn_small import CNN_small
@@ -27,7 +27,7 @@ def to_one_hot(y,device):
     return one_hot
 
 def train(model, optimizer, dataloader, device, epoch, args):
-    
+
     # set model to train mode
     model.train()
 
@@ -51,20 +51,22 @@ def train(model, optimizer, dataloader, device, epoch, args):
 
 def test(model, dataloader, device, args):
 
+    model.eval()
+
     for batch_idx, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
 
         output = model(data)
         pred = to_one_hot(output, device)
 
-    pass 
+    pass
 
 
 if __name__ == "__main__":
 
     # Include Hyperparameters for developing our Neural Network
     parser = argparse.ArgumentParser(description='Spectrogram + Emotion CNN')
-    parser.add_argument('--batch-size', type=int, default=1, metavar='N', help='input batch size for training (default: 5)')
+    parser.add_argument('--batch-size', type=int, default=8, metavar='N', help='input batch size for training (default: 8)')
     parser.add_argument('--test-batch-size', type=int, default=5, metavar='N', help='input batch size for testing (default: 1000)')
     parser.add_argument('--epochs', type=int, default=5, metavar='N', help='number of epochs to train (default: 5)')
     parser.add_argument('--lr', type=float, default=0.5, metavar='LR', help='learning rate (default: 0.01)')
@@ -77,7 +79,7 @@ if __name__ == "__main__":
     kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     manual_seed(args.seed)
-    
+
     # Load training data
     train_features, train_labels, test_features, test_labels = load_stft_data(split=.8)
     train_dataset = TensorDataset(train_features, train_labels)
@@ -87,7 +89,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size, **kwargs)
 
     # Instantiate model
-    model = CNN_small().to(device)    
+    model = CNN_small().to(device)
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     for epoch in range(1, args.epochs + 1):
