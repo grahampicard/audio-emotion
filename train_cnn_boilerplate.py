@@ -1,5 +1,6 @@
 import argparse
 import torch
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 # pytorch imports
 from torch import manual_seed
@@ -61,6 +62,9 @@ def test(model, dataloader, device, args):
         pred = to_one_hot(output, device)
 
     pass
+
+    test_binacc = accuracy_score(pred>=0, y>=0)
+    test_precision, test_recall, test_f1, _ = precision_recall_fscore_support(y>=0, pred>=0, average='binary')
 
 
 if __name__ == "__main__":
