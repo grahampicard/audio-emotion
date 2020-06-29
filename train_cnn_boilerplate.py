@@ -29,9 +29,9 @@ def to_one_hot(y,device):
 
 def train(model, optimizer, dataloader, device, epoch, args):
 
-
     # set model to train mode
     model.train()
+    train_loss = 0.0
 
     for batch_idx, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
@@ -41,30 +41,78 @@ def train(model, optimizer, dataloader, device, epoch, args):
         output = model(data)
 
         loss = F.binary_cross_entropy(output, target)
+        # https://sebastianraschka.com/faq/docs/pytorch-crossentropy.html
         loss.backward()
+        train_loss += loss.item()
         optimizer.step()
 
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(dataloader.dataset),
-                100. * batch_idx / len(dataloader), loss.item()))
+                100. * batch_idx / len(dataloader), loss.item()/len(data)))
+
+    print("Epoch {} complete! Average training loss: {}".format(epoch,
+        train_loss/len(dataloader.dataset)))
 
     return model
 
-def test(model, dataloader, device, args):
+
+def valid(model, dataloader, device, args):
 
     model.eval()
+    valid_loss = 0.0
 
     for batch_idx, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
 
         output = model(data)
+
+        loss = F.binary_cross_entropy(output, target)
+        valid_loss += loss.item()
+
+    print("Average validation loss: {}".format(valid_loss/len(dataloader.dataset)))
+    print(len(dataloader.dataset))
+    return valid_loss
+
+
+def test(model, dataloader, device, args):
+
+    model.eval()
+    test_loss = 0.0
+
+    n_correct, n_total = 0, 0
+    y_preds, y_true = [], []
+
+    for batch_idx, (data, target) in enumerate(dataloader):
+        data, target = data.to(device), target.to(device)
+
+        output = model(data)
+        loss = F.binary_cross_entropy(output, target)
+        test_loss += loss.item()
+
         pred = to_one_hot(output, device)
+        pred_index = torch.argmax(pred,1)
+        print(pred_index)
+        target_index = torch.argmax(target,1)
+        print(target_index)
 
-    pass
+        y_preds.extend(pred_index.data.cpu().tolist())
+        y_true.extend(target.data.cpu().tolist())
+        n_correct += (pred_index == target_index).sum()
+        n_total += len(dataloader.dataset)
 
-    test_binacc = accuracy_score(pred>=0, y>=0)
-    test_precision, test_recall, test_f1, _ = precision_recall_fscore_support(y>=0, pred>=0, average='binary')
+    print("Average test loss: {}".format(test_loss/len(dataloader.dataset)))
+    print("Test accuracy: {}".format(n_correct/n_total * 100.))
+    print("Test F1 score: {}".format(f1_score(numpy.asarray(y_true), numpy.asarray(y_preds),
+                                                       average='weighted') * 100.))
+    #pred.to_csv('predictions.csv')
+
+    #test_acc = accuracy_score(pred_index, target_index)
+    #print("Test accuracy: {}".format(test_acc))
+
+    return
+
+    #test_precision, test_recall, test_f1, _ = precision_recall_fscore_support(y>=0, pred>=0, average='binary')
 
 
 if __name__ == "__main__":
@@ -72,7 +120,7 @@ if __name__ == "__main__":
     # Include Hyperparameters for developing our Neural Network
     parser = argparse.ArgumentParser(description='Spectrogram + Emotion CNN')
     parser.add_argument('--batch-size', type=int, default=8, metavar='N', help='input batch size for training (default: 8)')
-    parser.add_argument('--test-batch-size', type=int, default=10, metavar='N', help='input batch size for testing (default: 10)')
+    parser.add_argument('--test-batch-size', type=int, default=50, metavar='N', help='input batch size for testing (default: 50)')
     parser.add_argument('--epochs', type=int, default=5, metavar='N', help='number of epochs to train (default: 5)')
     #parser.add_argument('--lr', type=float, default=0.01, metavar='LR', help='learning rate (default: 0.01)')
     #parser.add_argument('--momentum', type=float, default=0.1, metavar='M', help='SGD momentum (default: 0.5)')
@@ -86,9 +134,12 @@ if __name__ == "__main__":
     manual_seed(args.seed)
 
     # Load training data
-    train_features, train_labels, test_features, test_labels = load_stft_data(split=.8)
+    train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_stft_data(valid_split=0.8, test_split=0.9)
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
+
+    valid_dataset = TensorDataset(valid_features, valid_labels)
+    valid_loader = DataLoader(valid_dataset, batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
     test_dataset = TensorDataset(test_features, test_labels)
     test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size, **kwargs)
@@ -97,8 +148,17 @@ if __name__ == "__main__":
     model = CNN_small().to(device)
     optimizer = optim.Adam(model.parameters())
 
-    for epoch in range(1, args.epochs + 1):
-        train(model, optimizer, train_loader, device, epoch, args)
+    min_valid_loss = float('Inf')
 
-    if (args.save_model):
-        torch.save(model.state_dict(),"./data/processed/cnn-boilerplate.pt")
+    for epoch in range(1, args.epochs + 1):
+        curr_model = train(model, optimizer, train_loader, device, epoch, args)
+        curr_valid_loss = valid(curr_model, valid_loader, device, args)
+        if (curr_valid_loss < min_valid_loss):
+            min_valid_loss = curr_valid_loss
+            if (args.save_model):
+                #torch.save(curr_model.state_dict(),"./data/processed/cnn-boilerplate.pt")
+                torch.save(curr_model,"./data/processed/cnn-boilerplate.pt")
+            print("Found new best model, saving to disk!")
+
+    best_model = torch.load("./data/processed/cnn-boilerplate.pt")
+    test(best_model, test_loader, device, args)
