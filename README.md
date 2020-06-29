@@ -1,6 +1,6 @@
 # Getting Started
 1. Downlod `raw - (unzip into a folder named raw).zip` from our box.com account
-2. Unzip this add all contents into the folder named `data/raw`. Resulting file structure should look like this:
+2. Unzip this, add all contents into the folder named `data/raw`. Resulting file structure should look like this:
         
         data/raw/CA500_32kps
         data/raw/DeltaMFCCFeatures
