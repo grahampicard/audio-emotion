@@ -1,6 +1,8 @@
 import argparse
 import torch
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import f1_score
+import numpy as np
 
 # pytorch imports
 from torch import manual_seed
@@ -97,14 +99,15 @@ def test(model, dataloader, device, args):
         print(target_index)
 
         y_preds.extend(pred_index.data.cpu().tolist())
-        y_true.extend(target.data.cpu().tolist())
+        y_true.extend(target_index.data.cpu().tolist())
         n_correct += (pred_index == target_index).sum()
         n_total += len(dataloader.dataset)
 
     print("Average test loss: {}".format(test_loss/len(dataloader.dataset)))
-    print("Test accuracy: {}".format(n_correct/n_total * 100.))
-    print("Test F1 score: {}".format(f1_score(numpy.asarray(y_true), numpy.asarray(y_preds),
-                                                       average='weighted') * 100.))
+    print("Test accuracy: {}".format(100. * n_correct/n_total))
+    print("Test correct #: {}".format(n_correct))
+    print("Test F1 score: {}".format(100. * f1_score(np.asarray(y_true), np.asarray(y_preds),
+                                                       average='weighted')))
     #pred.to_csv('predictions.csv')
 
     #test_acc = accuracy_score(pred_index, target_index)
