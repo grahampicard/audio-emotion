@@ -53,7 +53,7 @@ def test(model, dataloader, device, args):
 
     model.eval()
 
-    for batch_idx, (data, target) in enumerate(dataloader):
+    for _, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
 
         output = model(data)
@@ -76,6 +76,7 @@ if __name__ == "__main__":
     parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=True, help='For Saving the current Model')
     args = parser.parse_args()
+    
     kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     manual_seed(args.seed)

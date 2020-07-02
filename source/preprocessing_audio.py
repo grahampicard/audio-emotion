@@ -3,38 +3,51 @@ import os
 import torch
 
 
-def simple_stft_transform(mp3path, savepath='./data/interim/', filename='output', output_types=['stft', 'wave'], sample_rate=32000, seconds=30):
-    """ Simple loader which will take a path/to/mp3 and convert it to numerical waveform files.
+def simple_transformer(mp3path, savedirectory='./data/interim/features/',
+                       filename='output', transforms=['stft', 'wave'],
+                       sample_rate=32000, seconds=30, offset=0.0):
+
+    """ Simple loader which will take a path/to/mp3 and convert it to 
+        numerical waveform files.
 
         Parameters
         ----------------
 
-        mp3path         path to input file
-        savepath        path to save output
-        filename        stem which will be used to create `.pt` files
-        output_types    transformations to be applied to file 
-        sample_rate     number of cycles measured per second
-        seconds         duration of the clip
+        mp3path         path to input file e.g.             `/data/raw/f.mp3`
+        savedirectory   directory where output is stored    `/interim/outputs/`
+        filename        stem used to create `.pt` files     `sample-output`
+        transforms      transformations applied to audio    `['stft']`
+        sample_rate     number of cycles sampled per second `22050`
+        seconds         duration of the clip                `30`
+        offset          start time duration                 `0.0`
     """
 
-    if isinstance(output_types, str):
-        output_types = [output_types]
+    if isinstance(transforms, str): transforms = [transforms]
 
-    waveform, _ = librosa.load(mp3path, sr=sample_rate, duration=seconds)
+    # load librosa file
+    waveform, _ = librosa.load(mp3path, sr=sample_rate, duration=seconds,
+                               offset=offset)
 
-    if waveform.shape[0] != sample_rate * seconds:
-        return False
+    # add transforms here
+    for output in transforms:
+        if output == "stft":
+            dir_path = os.path.join(savedirectory, output)
+            if not os.path.exists(dir_path): os.makedirs(dir_path)
 
-    for output in output_types:
-        if output == "stft":    
             spec = abs(librosa.stft(waveform))
             spec = torch.Tensor(spec)
-            output_path = os.path.join(savepath, 'stft/', f'{filename}.pt')
+            output_path = os.path.join(dir_path, f'{filename}.pt')
             torch.save(spec, output_path)
 
         if output == "wave":
-            wave = torch.Tensor(waveform)     
-            output_path = os.path.join(savepath, 'wave/', f'{filename}.pt')
+            dir_path = os.path.join(savedirectory, output)
+            if not os.path.exists(dir_path): os.makedirs(dir_path)
+
+            wave = torch.Tensor(waveform)
+            output_path = os.path.join(dir_path, f'{filename}.pt')
             torch.save(wave, output_path)
+
+        if output == "chroma":
+            pass
 
     return True
