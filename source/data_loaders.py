@@ -4,7 +4,7 @@ import pandas as pd
 import torch
 
 
-def load_stft_data(split=0.8, seed=123, label_type='one-hot'):
+def load_stft_data(valid_split=0.8, test_split=0.9, seed=123, label_type='one-hot'):
 
     # load files
     stft_dir = './data/interim/features/stft'
@@ -24,25 +24,24 @@ def load_stft_data(split=0.8, seed=123, label_type='one-hot'):
         song = f.replace('.pt', '')
         cur_file = os.path.join(stft_dir, f)
         features.append(torch.load(cur_file))
-        
+
         cur_label = label_df.loc[song].to_numpy()
         labels.append(cur_label)
 
     # create train & test splits
     size = len(features)
     idxs = list(range(size))
-    split_idx = int(np.floor(split * size))
 
     np.random.seed(seed)
     np.random.shuffle(idxs)
 
-    train_split = idxs[:split_idx]
-    test_split = idxs[split_idx:]
-    
+    train_idx, valid_idx, test_idx = np.split(idxs, [int(valid_split * size), int(test_split * size)])
+
     features = torch.stack(features).unsqueeze(1)
     labels = torch.FloatTensor(labels)
 
-    features_train, labels_train = features[train_split], labels[train_split]
-    features_test, labels_test = features[test_split], labels[test_split]
+    features_train, labels_train = features[train_idx], labels[train_idx]
+    features_valid, labels_valid = features[valid_idx], labels[valid_idx]
+    features_test, labels_test = features[test_idx], labels[test_idx]
 
-    return features_train, labels_train, features_test, labels_test
+    return features_train, labels_train, features_valid, labels_valid, features_test, labels_test
