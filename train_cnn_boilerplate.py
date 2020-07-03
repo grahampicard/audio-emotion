@@ -14,7 +14,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 # user-created files
 from models.cnn_boilerplate import CNN
 from models.cnn_small import CNN_small
-from source.data_loaders import load_stft_data
+from source.data_loaders import load_15sec_stft_data
 
 
 def to_one_hot(y,device):
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     manual_seed(args.seed)
 
     # Load training data
-    train_features, train_labels, test_features, test_labels = load_stft_data(split=.8)
+    train_features, train_labels, test_features, test_labels = load_15sec_stft_data(split=.8)
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 

@@ -6,14 +6,16 @@ from source.preprocessing_audio import simple_transformer
 
 if __name__ == "__main__":
 
+    sample_length = 5
+
     # Audio
-    savepath = './data/interim/30secondsamples'
+    savepath = f'./data/interim/{sample_length}secondsamples'
     mp3dir = './data/raw/CAL500_32kps/'
     mp3files = [(mp3dir + f, f.replace('.mp3', '')) for f in os.listdir(mp3dir)]
  
     for filepath, filename in mp3files:
         simple_transformer(filepath, savepath, filename,
-                           transforms=['stft'], seconds=30)
+                           transforms=['stft'], seconds=sample_length)
 
     # Labels
     idx_file = './data/raw/CAL500_noAudioFeatures/songNames.txt'

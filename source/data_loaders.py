@@ -4,16 +4,16 @@ import pandas as pd
 import torch
 
 
-def load_stft_data(split=0.8, seed=123, label_type='one-hot'):
+def load_15sec_stft_data(split=0.8, seed=123, label_type='one-hot'):
 
     # load files
-    stft_dir = './data/interim/features/stft'
+    stft_dir = './data/interim/15secondsamples/stft'
     tensor_files = os.listdir(stft_dir)
 
     # add options for labels to use!
-    if label_type == 'soft': csv_file = 'emotional_scores'
+    if label_type == 'soft': csv_file = 'multi_label_emotions'
     if label_type == 'one-hot': csv_file = 'one_hot_top_emotion'
-    label_df = pd.read_csv(f'./data/interim/labels/{csv_file}.csv', index_col='song')
+    label_df = pd.read_csv(f'./data/interim/15secondsamples/labels/{csv_file}.csv', index_col='song')
 
     # add features
     features = []
@@ -23,10 +23,12 @@ def load_stft_data(split=0.8, seed=123, label_type='one-hot'):
     for f in tensor_files:
         song = f.replace('.pt', '')
         cur_file = os.path.join(stft_dir, f)
-        features.append(torch.load(cur_file))
-        
+        cur_song = torch.load(cur_file)
         cur_label = label_df.loc[song].to_numpy()
-        labels.append(cur_label)
+
+        if cur_song.shape[1] == 938:
+            features.append(cur_song)
+            labels.append(cur_label)
 
     # create train & test splits
     size = len(features)
