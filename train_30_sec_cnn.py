@@ -132,14 +132,14 @@ if __name__ == "__main__":
     parser.add_argument('--model', type=str, default='simple')
     args = parser.parse_args()
     
-    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() & ~args.no_cuda else {}
+    device = torch.device("cuda" if torch.cuda.is_available() & ~args.no_cuda else "cpu")
     
     if args.seed is not None:
         manual_seed(args.seed)
 
     # Load training data
-    train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_stft_data(valid_split=0.8, test_split=0.9)
+    train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_stft_data(valid_split=0.8, test_split=0.9, sample_length=30)
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 
