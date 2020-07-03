@@ -15,8 +15,8 @@ from torch.utils.data import TensorDataset
 from torch.utils.data.sampler import SubsetRandomSampler
 
 # user-created files
-from models.cnn_boilerplate import CNN
-from models.cnn_small import CNN_small
+from models.cnn_15_seconds import CNN_simple_15s_32k
+from models.cnn_15_seconds import CNN_dev_15s_32k
 from source.data_loaders import load_stft_data
 
 
@@ -37,7 +37,6 @@ def train(model, optimizer, dataloader, device, epoch, args):
 
     for batch_idx, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
-
         optimizer.zero_grad()
 
         output = model(data)
@@ -85,9 +84,8 @@ def test(model, dataloader, device, args):
     n_correct, n_total = 0, 0
     y_preds, y_true = [], []
 
-    for batch_idx, (data, target) in enumerate(dataloader):
+    for _, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
-
         output = model(data)
         loss = F.binary_cross_entropy(output, target)
         test_loss += loss.item()
@@ -131,13 +129,17 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=True, help='For Saving the current Model')
+    parser.add_argument('--model', type=str, default='simple')
     args = parser.parse_args()
-    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    manual_seed(args.seed)
+    
+    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() & ~args.no_cuda else {}
+    device = torch.device("cuda" if torch.cuda.is_available() & ~args.no_cuda else "cpu")
+    
+    if args.seed is not None:
+        manual_seed(args.seed)
 
     # Load training data
-    train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_stft_data(valid_split=0.8, test_split=0.9)
+    train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_stft_data(valid_split=0.8, test_split=0.9, sample_length=15)
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 
@@ -148,7 +150,13 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size, **kwargs)
 
     # Instantiate model
-    model = CNN_small().to(device)
+    if args.model == 'simple':
+        model = CNN_simple_15s_32k().to(device)
+    elif args.model == 'dev':
+        model = CNN_dev_15s_32k().to(device)
+    else:
+        raise ValueError
+
     optimizer = optim.Adam(model.parameters())
 
     min_valid_loss = float('Inf')
@@ -160,8 +168,8 @@ if __name__ == "__main__":
             min_valid_loss = curr_valid_loss
             if (args.save_model):
                 #torch.save(curr_model.state_dict(),"./data/processed/cnn-boilerplate.pt")
-                torch.save(curr_model,"./data/processed/cnn-boilerplate.pt")
+                torch.save(curr_model, f"./data/processed/cnn-{args.model}-15s_32k.pt")
             print("Found new best model, saving to disk!")
 
-    best_model = torch.load("./data/processed/cnn-boilerplate.pt")
+    best_model = torch.load(f"./data/processed/cnn-{args.model}-15s_32k.pt")
     test(best_model, test_loader, device, args)
