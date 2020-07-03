@@ -4,16 +4,24 @@ import pandas as pd
 import torch
 
 
-def load_15sec_stft_data(split=0.8, seed=123, label_type='one-hot'):
+def load_stft_data(split=0.8, seed=None, label_type='one-hot', sample_length=15):
+
+    # do manual checks for segment. found by observing output from librosa
+    if sample_length == 15:
+        expected_shape = 938
+    elif sample_length == 30:
+        expected_shape = 1876
+    else:
+        raise ValueError
 
     # load files
-    stft_dir = './data/interim/15secondsamples/stft'
+    stft_dir = f'./data/interim/{sample_length}secondsamples/stft'
     tensor_files = os.listdir(stft_dir)
 
     # add options for labels to use!
     if label_type == 'soft': csv_file = 'multi_label_emotions'
     if label_type == 'one-hot': csv_file = 'one_hot_top_emotion'
-    label_df = pd.read_csv(f'./data/interim/15secondsamples/labels/{csv_file}.csv', index_col='song')
+    label_df = pd.read_csv(f'./data/interim/{sample_length}secondsamples/labels/{csv_file}.csv', index_col='song')
 
     # add features
     features = []
@@ -26,7 +34,8 @@ def load_15sec_stft_data(split=0.8, seed=123, label_type='one-hot'):
         cur_song = torch.load(cur_file)
         cur_label = label_df.loc[song].to_numpy()
 
-        if cur_song.shape[1] == 938:
+        # Ensure all samples are 30 seconds long
+        if cur_song.shape[1] == expected_shape:
             features.append(cur_song)
             labels.append(cur_label)
 
@@ -35,7 +44,9 @@ def load_15sec_stft_data(split=0.8, seed=123, label_type='one-hot'):
     idxs = list(range(size))
     split_idx = int(np.floor(split * size))
 
-    np.random.seed(seed)
+    if seed is not None: 
+        np.random.seed(seed)
+        
     np.random.shuffle(idxs)
 
     train_split = idxs[:split_idx]

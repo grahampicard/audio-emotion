@@ -19,7 +19,7 @@ if __name__ == "__main__":
     matches = matches[match_cols].to_records(index=False)
     
     ## Make target path
-    segment_path = 'data/interim/segments/'
+    segment_path = 'data/interim/variable-segments/'
     taggable_segments = []
     if not os.path.exists(segment_path): os.makedirs(segment_path)
     for source, order, start, dur in matches:
@@ -40,4 +40,4 @@ if __name__ == "__main__":
 
     label_path = os.path.join(segment_path, 'labels/')
     if not os.path.exists(label_path): os.makedirs(label_path)
-    labels.to_csv('data/interim/segments/labels/multi_label_emotions.csv')
+    labels.to_csv(os.path.join(segment_path,'labels/multi_label_emotions.csv'))

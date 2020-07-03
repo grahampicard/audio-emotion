@@ -12,9 +12,9 @@ from torch.utils.data import TensorDataset
 from torch.utils.data.sampler import SubsetRandomSampler
 
 # user-created files
-from models.cnn_boilerplate import CNN
-from models.cnn_small import CNN_small
-from source.data_loaders import load_15sec_stft_data
+from models.cnn_15_seconds import CNN_simple_15s_32k
+from models.cnn_15_seconds import CNN_dev_15s_32k
+from source.data_loaders import load_stft_data
 
 
 def to_one_hot(y,device):
@@ -33,7 +33,6 @@ def train(model, optimizer, dataloader, device, epoch, args):
 
     for batch_idx, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
-
         optimizer.zero_grad()
 
         output = model(data)
@@ -55,7 +54,6 @@ def test(model, dataloader, device, args):
 
     for _, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
-
         output = model(data)
         pred = to_one_hot(output, device)
 
@@ -75,14 +73,17 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=True, help='For Saving the current Model')
+    parser.add_argument('--model', type=str, default='simple')
     args = parser.parse_args()
     
     kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    manual_seed(args.seed)
+    
+    if args.seed is not None:
+        manual_seed(args.seed)
 
     # Load training data
-    train_features, train_labels, test_features, test_labels = load_15sec_stft_data(split=.8)
+    train_features, train_labels, test_features, test_labels = load_stft_data(split=.8)
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 
@@ -90,11 +91,15 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size, **kwargs)
 
     # Instantiate model
-    model = CNN_small().to(device)
+    if args.model == 'simple':
+        model = CNN_simple_15s_32k().to(device)
+    if args.model == 'dev':
+        model = CNN_dev_15s_32k().to(device)
+
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     for epoch in range(1, args.epochs + 1):
         train(model, optimizer, train_loader, device, epoch, args)
 
     if (args.save_model):
-        torch.save(model.state_dict(),"./data/processed/cnn-boilerplate.pt")
+        torch.save(model.state_dict(), f"./data/processed/cnn-{args.model}-15s_32k.pt")
