@@ -71,4 +71,4 @@ if __name__ == "__main__":
 
     label_path = os.path.join(segment_path, 'labels/')
     if not os.path.exists(label_path): os.makedirs(label_path)
-    segments.to_csv(os.path.join(segment_path,'labels/multi_label_emotions.csv'), index=False)
+    segments.to_csv(os.path.join(segment_path,'labels/multi_label_emotions.csv'))
