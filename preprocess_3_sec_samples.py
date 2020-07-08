@@ -4,6 +4,30 @@ from source.preprocessing_audio import simple_transformer
 
 
 if __name__ == "__main__":
+    """
+    Take MP3 audio files and apply preprocessing functions to run a 
+    short-time Fourier transform on each MP3 file. 
+
+    This script collects path names for MP3s and outputs `.pt` files
+    with STFT to view audio frequencies. 
+
+    Folder conventions
+
+    Input:
+        data
+          |__raw
+            |__name-of-mp3-files
+
+    Output:
+        data
+          |__interim
+            |__name-of-sample-length
+              |__transformation
+              |__transformation2
+              ...
+              |__labels
+    """
+
 
     # Audio
     ## get files
@@ -47,4 +71,4 @@ if __name__ == "__main__":
 
     label_path = os.path.join(segment_path, 'labels/')
     if not os.path.exists(label_path): os.makedirs(label_path)
-    segments.to_csv(os.path.join(segment_path,'labels/multi_label_emotions.csv'))
+    segments.to_csv(os.path.join(segment_path,'labels/multi_label_emotions.csv'), index=False)

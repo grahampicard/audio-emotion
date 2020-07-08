@@ -6,10 +6,19 @@ import torch
 
 def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
                    label_type='one-hot', sample_length=15):
+    """
+    Loads a {sample_length} sample of preprocessed spectrogram. Assumes
+    a given validation size and testing size.
+    
+    Assumptions: 
+    1.  there is only one sample per song
+    2.  there is only one label record (soft/hard/one-hot) per song
+ 
+    """
 
     # do manual checks for segment. found by observing output from librosa
     if sample_length == 15:
-        expected_shape = 938
+        expected_shape = 938 
     elif sample_length == 30:
         expected_shape = 1876
     else:
@@ -61,11 +70,18 @@ def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
     return features_train, labels_train, features_valid, labels_valid, features_test, labels_test
 
 
-def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None, label_type='soft'):
+
+def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
+                            label_type='soft'):
     """
-    1. Load all of the names and calculate # segments/title
-    2. Divide into train, test, validate
-    3. Load each song into the approa
+    Uses CAL500 Expanded data where there are varaible length segments with
+    different emotions for each segments. 
+
+    Assumptions:
+    1.  don't allow overlap between songs and testing split
+    2.  each song is 3 seconds long
+    3.  there is only one label record (soft/hard/one-hot) per song
+
     """
 
     if seed is not None: 
