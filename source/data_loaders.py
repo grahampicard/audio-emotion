@@ -59,3 +59,91 @@ def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
     features_test, labels_test = features[test_idx], labels[test_idx]
 
     return features_train, labels_train, features_valid, labels_valid, features_test, labels_test
+
+
+def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None, label_type='soft'):
+    """
+    1. Load all of the names and calculate # segments/title
+    2. Divide into train, test, validate
+    3. Load each song into the approa
+    """
+
+    if seed is not None: 
+        np.random.seed(seed)
+
+    # do manual checks for segment. found by observing output from librosa
+    expected_shape = 188
+
+    # load files
+    stft_dir = f'./data/interim/expanded-3secondsegments/stft'
+    tensor_files = os.listdir(stft_dir)
+
+    # find all songs and divide into train, test, validate
+    all_songs = [x.split('-seg-')[0] for x in tensor_files]
+    segment_counter = {song: 0 for song in set(all_songs)}
+    for song in all_songs:
+        segment_counter[song] += 1
+
+    # create train & test splits
+    size = len(all_songs)
+    n_test = int(size * (1 - test_split))
+    n_valid = int(size * (test_split - valid_split))
+
+    # shuffle keys
+    keys = list(segment_counter.keys())
+    np.random.shuffle(keys)
+    valid_keys, valid_counter = [], 0
+    test_keys, test_counter = [], 0
+    train_keys = []
+
+    for key in keys:
+
+        if valid_counter < n_valid:
+            valid_keys.append(key)
+            valid_counter += segment_counter[key]
+        elif test_counter < n_test:
+            test_keys.append(key)
+            test_counter += segment_counter[key]
+        else:
+            train_keys.append(key)
+       
+    # add options for labels to use!
+    if label_type == 'soft': csv_file = 'multi_label_emotions'
+    if label_type == 'one-hot': csv_file = 'one_hot_top_emotion'
+    label_df = pd.read_csv(f'./data/interim/expanded-3secondsegments/labels/{csv_file}.csv',
+                           index_col=['source', 'index']).drop(columns=['end_time', 'start_time', 'duration'])
+
+    # get features and labels
+    features_train, labels_train, = [], [] 
+    features_valid, labels_valid, = [], [] 
+    features_test, labels_test, = [], []
+
+    # Load data
+    for f in tensor_files:
+        song, idx = f.split('-seg-')
+        idx = int(idx.split('-time-')[0])
+        cur_file = os.path.join(stft_dir, f)
+        cur_feature = torch.load(cur_file)
+        cur_label = label_df.loc[(song, idx)].to_numpy()
+
+        # Ensure all samples are 30 seconds long
+        if cur_feature.shape[1] == expected_shape:
+            if song in train_keys:
+                features_train.append(cur_feature)
+                labels_train.append(cur_label)
+
+            elif song in test_keys:
+                features_test.append(cur_feature)
+                labels_test.append(cur_label)
+
+            elif song in valid_keys:
+                features_valid.append(cur_feature)
+                labels_valid.append(cur_label)    
+        else:
+            print(f)
+    
+    features_train, labels_train = torch.stack(features_train).unsqueeze(1), torch.FloatTensor(labels_train)
+    features_test, labels_test = torch.stack(features_test).unsqueeze(1), torch.FloatTensor(labels_test)
+    features_valid, labels_valid = torch.stack(features_valid).unsqueeze(1), torch.FloatTensor(labels_valid)
+
+    return features_train, labels_train, features_valid, labels_valid, features_test, labels_test
