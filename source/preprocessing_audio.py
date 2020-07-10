@@ -12,7 +12,6 @@ def simple_transformer(mp3path, savedirectory='./data/interim/features/',
 
         Parameters
         ----------------
-
         mp3path         path to input file e.g.             `/data/raw/f.mp3`
         savedirectory   directory where output is stored    `/interim/outputs/`
         filename        stem used to create `.pt` files     `sample-output`

@@ -7,6 +7,15 @@ import torch
 def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
                    label_type='one-hot', sample_length=15):
     """
+    Parameters
+    ----------------
+    valid_split     point on interval [0,1] to split train/valid    0.8
+    test_split      point on interval [0,1] to split valid/test     0.9
+    seed            use for reproducable results                    123 
+    label_type      either using one-hot, hard, or soft labels      'one-hot'
+    sample_length   how long we want the samples to be              10
+
+
     Loads a {sample_length} sample of preprocessed spectrogram. Assumes
     a given validation size and testing size.
     
@@ -124,10 +133,15 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
             train_keys.append(key)
        
     # add options for labels to use!
-    if label_type == 'soft': csv_file = 'multi_label_emotions'
-    if label_type == 'one-hot': csv_file = 'one_hot_top_emotion'
+    if label_type == 'soft':
+        csv_file = 'soft-labels'
+    elif label_type == 'hard':
+        csv_file = 'hard-labels'
+    else:
+        raise ValueError
+    
     label_df = pd.read_csv(f'./data/interim/expanded-3secondsegments/labels/{csv_file}.csv',
-                           index_col=['source', 'index']).drop(columns=['end_time', 'start_time', 'duration'])
+                           index_col=['source', 'index'])
 
     # get features and labels
     features_train, labels_train, = [], [] 
