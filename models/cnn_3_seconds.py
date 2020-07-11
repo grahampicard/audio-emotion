@@ -1,7 +1,7 @@
 """ CNN models 
 
     Input:
-        - 30 second samples
+        - 3 second samples
         - 32k sample rate
 
     Output:
