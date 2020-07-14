@@ -43,8 +43,8 @@ class CNN_simple_3s_32k(nn.Module):
         x = x.view(-1, 960)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
-        return F.softmax(x, dim=1)
-
+        # return F.softmax(x, dim=1)
+        return F.sigmoid(x)
 
 class CNN_dev_3s_32k(nn.Module):
     """ Simplified model to enable more rapid development"""
@@ -75,4 +75,5 @@ class CNN_dev_3s_32k(nn.Module):
         x = x.view(-1, 90)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
-        return F.softmax(x, dim=1)
+        # return F.softmax(x, dim=1)
+        return F.sigmoid(x)
