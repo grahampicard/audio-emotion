@@ -81,7 +81,7 @@ def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
 
 
 def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
-                            label_type='soft'):
+                            label_type='soft', dev=False):
     """
     Uses CAL500 Expanded data where there are varaible length segments with
     different emotions for each segments. 
@@ -175,5 +175,10 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
     features_train, labels_train = torch.stack(features_train).unsqueeze(1), torch.FloatTensor(labels_train)
     features_test, labels_test = torch.stack(features_test).unsqueeze(1), torch.FloatTensor(labels_test)
     features_valid, labels_valid = torch.stack(features_valid).unsqueeze(1), torch.FloatTensor(labels_valid)
+
+    if dev:
+        features_train, labels_train = features_train[:20], labels_train[:20]
+        features_test, labels_test = features_test[:5], labels_test[:5]
+        features_valid, labels_valid = features_valid[:5], labels_valid[:5]
 
     return features_train, labels_train, features_valid, labels_valid, features_test, labels_test

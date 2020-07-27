@@ -121,7 +121,7 @@ if __name__ == "__main__":
     # Include Hyperparameters for developing our Neural Network
     parser = argparse.ArgumentParser(description='Spectrogram + Emotion CNN')
     parser.add_argument('--batch-size', type=int, default=8, metavar='N', help='input batch size for training (default: 8)')
-    parser.add_argument('--test-batch-size', type=int, default=50, metavar='N', help='input batch size for testing (default: 50)')
+    parser.add_argument('--test-batch-size', type=int, default=8, metavar='N', help='input batch size for testing (default: 50)')
     parser.add_argument('--epochs', type=int, default=5, metavar='N', help='number of epochs to train (default: 5)')
     #parser.add_argument('--lr', type=float, default=0.01, metavar='LR', help='learning rate (default: 0.01)')
     #parser.add_argument('--momentum', type=float, default=0.1, metavar='M', help='SGD momentum (default: 0.5)')
@@ -173,5 +173,3 @@ if __name__ == "__main__":
 
     best_model = torch.load(f"./data/processed/cnn-{args.model}-3s_32k.pt")
     test(best_model, test_loader, device, args)
-
-
