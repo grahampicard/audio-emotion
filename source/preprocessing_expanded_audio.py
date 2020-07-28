@@ -4,7 +4,7 @@ import pandas as pd
 from source.preprocessing_audio import simple_transformer
 
 
-def match_expanded_dataset(seconds, dev=False):
+def match_expanded_dataset(seconds, dev=False, transforms=['stft']):
     """
     Parameters
     ----------------
@@ -67,7 +67,7 @@ def match_expanded_dataset(seconds, dev=False):
                 mp3path = os.path.join(mp3dir, source) + '.mp3'
                 filename = f'{source}-seg-{order}-time-{int(clip_start)}-{int(clip_end)}'
                 simple_transformer(mp3path, segment_path, filename,
-                                   transforms=['stft'], seconds=3,
+                                   transforms=transforms, seconds=3,
                                    offset=clip_start)
                 tagged_segs.append((source, order, start, end))
             except:
@@ -87,3 +87,4 @@ def match_expanded_dataset(seconds, dev=False):
     segments_soft.to_csv(os.path.join(segment_path,'labels/soft-labels.csv'), index=False)
 
     return True
+1

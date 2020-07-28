@@ -46,7 +46,26 @@ def simple_transformer(mp3path, savedirectory='./data/interim/features/',
             output_path = os.path.join(dir_path, f'{filename}.pt')
             torch.save(wave, output_path)
 
+        if output == "stftdb":
+            dir_path = os.path.join(savedirectory, output)
+            if not os.path.exists(dir_path): os.makedirs(dir_path)
+
+            spec = abs(librosa.stft(waveform))
+            spec = torch.Tensor(spec)
+            output_path = os.path.join(dir_path, f'{filename}.pt')
+            torch.save(spec, output_path)            
+
         if output == "chroma":
-            pass
+            dir_path = os.path.join(savedirectory, output)
+            if not os.path.exists(dir_path): os.makedirs(dir_path)
+            
+
+            harmonic,_ = librosa.effects.hpss(waveform)
+            chroma = librosa.feature.chroma_cqt(y=harmonic, sr=sample_rate,
+                                                bins_per_octave=36)
+
+            form = torch.Tensor(chroma)
+            output_path = os.path.join(dir_path, f'{filename}.pt')
+            torch.save(form, output_path)
 
     return True
