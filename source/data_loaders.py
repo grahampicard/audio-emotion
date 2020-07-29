@@ -5,7 +5,7 @@ import torch
 
 
 def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
-                   label_type='one-hot', sample_length=15):
+                   label_type='one-hot', sample_length=15, preprocessing='stft'):
     """
     Parameters
     ----------------
@@ -34,8 +34,8 @@ def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
         raise ValueError
 
     # load files
-    stft_dir = f'./data/interim/{sample_length}secondsamples/stft'
-    tensor_files = os.listdir(stft_dir)
+    data_dir = f'./data/interim/{sample_length}secondsamples/stft'
+    tensor_files = os.listdir(data_dir)
 
     # add options for labels to use!
     if label_type == 'soft': csv_file = 'multi_label_emotions'
@@ -49,7 +49,7 @@ def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
     # Load data
     for f in tensor_files:
         song = f.replace('.pt', '')
-        cur_file = os.path.join(stft_dir, f)
+        cur_file = os.path.join(data_dir, f)
         cur_song = torch.load(cur_file)
         cur_label = label_df.loc[song].to_numpy()
 
@@ -81,7 +81,7 @@ def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
 
 
 def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
-                            label_type='soft', dev=False):
+                            label_type='soft', dev=False, preprocessing='stft'):
     """
     Uses CAL500 Expanded data where there are varaible length segments with
     different emotions for each segments. 
@@ -100,8 +100,8 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
     expected_shape = 188
 
     # load files
-    stft_dir = f'./data/interim/expanded-3secondsegments/stft'
-    tensor_files = os.listdir(stft_dir)
+    data_dir = f'./data/interim/expanded-3secondsegments/{preprocessing}'
+    tensor_files = os.listdir(data_dir)
 
     # find all songs and divide into train, test, validate
     all_songs = [x.split('-seg-')[0] for x in tensor_files]
@@ -152,7 +152,7 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
     for f in tensor_files:
         song, idx = f.split('-seg-')
         idx = int(idx.split('-time-')[0])
-        cur_file = os.path.join(stft_dir, f)
+        cur_file = os.path.join(data_dir, f)
         cur_feature = torch.load(cur_file)
         cur_label = label_df.loc[(song, idx)].to_numpy()
 
