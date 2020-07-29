@@ -81,7 +81,7 @@ def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
 
 
 def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
-                            label_type='soft', dev=False, preprocessing='stft'):
+                            label_type='soft-labels', dev=False, preprocessing='stft'):
     """
     Uses CAL500 Expanded data where there are varaible length segments with
     different emotions for each segments. 
@@ -102,6 +102,9 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
     # load files
     data_dir = f'./data/interim/expanded-3secondsegments/{preprocessing}'
     tensor_files = os.listdir(data_dir)
+
+    if dev:
+        tensor_files = tensor_files[:len(tensor_files) // 10]
 
     # find all songs and divide into train, test, validate
     all_songs = [x.split('-seg-')[0] for x in tensor_files]
@@ -133,15 +136,12 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
             train_keys.append(key)
        
     # add options for labels to use!
-    if label_type == 'soft':
-        csv_file = 'soft-labels'
-    elif label_type == 'hard':
-        csv_file = 'hard-labels'
-    else:
+    csv_file = f'./data/interim/expanded-3secondsegments/labels/{label_type}.csv'
+
+    if not os.path.exists(csv_file):
         raise ValueError
     
-    label_df = pd.read_csv(f'./data/interim/expanded-3secondsegments/labels/{csv_file}.csv',
-                           index_col=['source', 'index'])
+    label_df = pd.read_csv(csv_file, index_col=['source', 'index'])
 
     # get features and labels
     features_train, labels_train, = [], [] 
@@ -156,7 +156,7 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
         cur_feature = torch.load(cur_file)
         cur_label = label_df.loc[(song, idx)].to_numpy()
 
-        # Ensure all samples are 30 seconds long
+        # Ensure all samples are 3 seconds long
         if cur_feature.shape[1] == expected_shape:
             if song in train_keys:
                 features_train.append(cur_feature)
@@ -175,10 +175,5 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
     features_train, labels_train = torch.stack(features_train).unsqueeze(1), torch.FloatTensor(labels_train)
     features_test, labels_test = torch.stack(features_test).unsqueeze(1), torch.FloatTensor(labels_test)
     features_valid, labels_valid = torch.stack(features_valid).unsqueeze(1), torch.FloatTensor(labels_valid)
-
-    if dev:
-        features_train, labels_train = features_train[:20], labels_train[:20]
-        features_test, labels_test = features_test[:5], labels_test[:5]
-        features_valid, labels_valid = features_valid[:5], labels_valid[:5]
 
     return features_train, labels_train, features_valid, labels_valid, features_test, labels_test
