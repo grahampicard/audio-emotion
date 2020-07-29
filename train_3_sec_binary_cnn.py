@@ -40,7 +40,7 @@ def train(model, optimizer, dataloader, device, epoch, args):
 
         output = model(data)
 
-        loss = F.binary_cross_entropy(output, target)
+        loss = nn.BCEWithLogitsLoss(output, target)
         # https://sebastianraschka.com/faq/docs/pytorch-crossentropy.html
         loss.backward()
         train_loss += loss.item()
@@ -67,7 +67,7 @@ def valid(model, dataloader, device, args):
 
         output = model(data)
 
-        loss = F.binary_cross_entropy(output, target)
+        loss = nn.BCEWithLogitsLoss(output, target)
         valid_loss += loss.item()
 
     print("Average validation loss: {}".format(valid_loss/len(dataloader.dataset)))
@@ -86,7 +86,7 @@ def test(model, dataloader, device, args):
     for _, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
         output = model(data)
-        loss = F.binary_cross_entropy(output, target)
+        loss = nn.BCEWithLogitsLoss(output, target)
         test_loss += loss.item()
 
         pred = to_one_hot(output, device)
@@ -130,10 +130,10 @@ if __name__ == "__main__":
     parser.add_argument('--save-model', action='store_true', default=True, help='For Saving the current Model')
     parser.add_argument('--model', type=str, default='simple')
     args = parser.parse_args()
-    
+
     kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() & ~args.no_cuda else {}
     device = torch.device("cuda" if torch.cuda.is_available() & ~args.no_cuda else "cpu")
-    
+
     if args.seed is not None:
         manual_seed(args.seed)
 
@@ -169,4 +169,3 @@ if __name__ == "__main__":
     test(best_model, test_loader, device, args)
     best_model = torch.load(f"./data/processed/cnn-binary-happy-{args.model}-3s_32k.pt")
     test(best_model, test_loader, device, args)
-
