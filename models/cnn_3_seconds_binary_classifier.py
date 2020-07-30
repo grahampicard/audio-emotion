@@ -1,4 +1,4 @@
-""" CNN models 
+""" CNN models
 
     Input:
         - 3 second samples
@@ -34,6 +34,8 @@ class CNN_simple_3s_32k(nn.Module):
 
         self.drp = nn.Dropout2d(0.25)
 
+        self.bn = nn.BatchNorm2d(16)
+
 
     def forward(self, x):
         x = self.drp(self.pool1(F.relu(self.conv1(x))))
@@ -41,9 +43,9 @@ class CNN_simple_3s_32k(nn.Module):
         x = self.drp(self.pool1(F.relu(self.conv3(x))))
         x = self.drp(self.pool1(F.relu(self.conv4(x))))
         x = self.drp(self.pool2(F.relu(self.conv5(x))))
+        x = self.bn(x)
         x = x.view(-1, 240)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
-        # return F.sigmoid(x)

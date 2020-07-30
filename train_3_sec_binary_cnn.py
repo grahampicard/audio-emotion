@@ -19,14 +19,14 @@ from models.cnn_3_seconds_binary_classifier import CNN_simple_3s_32k
 from source.data_loaders import load_section_level_stft
 
 
-def to_one_hot(y,device):
-    """converts a NxC input to a NxC dimnensional one-hot encoding
-    """
-    max_idx = torch.argmax(y, 0, keepdim=True).to(device)
-    one_hot = torch.FloatTensor(y.shape).to(device)
-    one_hot.zero_()
-    one_hot.scatter_(0, max_idx, 1)
-    return one_hot
+def binary_acc(y_pred, y_test):
+    y_pred_tag = torch.round(torch.sigmoid(y_pred))
+
+    correct_results_sum = (y_pred_tag == y_test).sum().float()
+    acc = correct_results_sum/y_test.shape[0]
+    acc = torch.round(acc * 100)
+
+    return acc
 
 def train(model, optimizer, dataloader, device, epoch, args):
 
@@ -39,8 +39,8 @@ def train(model, optimizer, dataloader, device, epoch, args):
         optimizer.zero_grad()
 
         output = model(data)
-
-        loss = nn.BCEWithLogitsLoss(output, target)
+        criterion = nn.BCEWithLogitsLoss()
+        loss = criterion(output, target)
         # https://sebastianraschka.com/faq/docs/pytorch-crossentropy.html
         loss.backward()
         train_loss += loss.item()
@@ -66,8 +66,9 @@ def valid(model, dataloader, device, args):
         data, target = data.to(device), target.to(device)
 
         output = model(data)
+        criterion = nn.BCEWithLogitsLoss()
 
-        loss = nn.BCEWithLogitsLoss(output, target)
+        loss = criterion(output, target)
         valid_loss += loss.item()
 
     print("Average validation loss: {}".format(valid_loss/len(dataloader.dataset)))
@@ -86,18 +87,16 @@ def test(model, dataloader, device, args):
     for _, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
         output = model(data)
-        loss = nn.BCEWithLogitsLoss(output, target)
+        criterion = nn.BCEWithLogitsLoss()
+        loss = criterion(output, target)
         test_loss += loss.item()
 
-        pred = to_one_hot(output, device)
-        pred_index = torch.argmax(pred,1)
-        print(pred_index)
-        target_index = torch.argmax(target,1)
-        print(target_index)
+        y_test_pred = torch.sigmoid(output)
+        y_pred = torch.round(y_test_pred)
 
-        y_preds.extend(pred_index.data.cpu().tolist())
-        y_true.extend(target_index.data.cpu().tolist())
-        n_correct += (pred_index == target_index).sum()
+        y_preds.extend(y_pred.data.cpu().tolist())
+        y_true.extend(target.data.cpu().tolist())
+        n_correct += (y_pred == target).sum()
         n_total += len(dataloader.dataset)
 
     print("Average test loss: {}".format(test_loss/len(dataloader.dataset)))
@@ -164,8 +163,5 @@ if __name__ == "__main__":
                 torch.save(curr_model, f"./data/processed/cnn-binary-happy-{args.model}-3s_32k.pt")
             print("Found new best model, saving to disk!")
 
-    best_model = torch.load(f"./data/processed/cnn-binary-happy-{args.model}-3s_32k.pt")
-    best_model = torch.load(f"./data/processed/cnn-binary-happy-{args.model}-3s_32k.pt")
-    test(best_model, test_loader, device, args)
     best_model = torch.load(f"./data/processed/cnn-binary-happy-{args.model}-3s_32k.pt")
     test(best_model, test_loader, device, args)
