@@ -151,7 +151,7 @@ if __name__ == "__main__":
     for label in labels:
 
         # Load training data
-        train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_section_level_stft(label_type=label, valid_split=0.6, test_split=.08)
+        train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_section_level_stft(label_type=label, valid_split=0.6, test_split=0.8)
         train_dataset = TensorDataset(train_features, train_labels)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 
