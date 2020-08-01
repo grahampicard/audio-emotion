@@ -154,23 +154,26 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
         idx = int(idx.split('-time-')[0])
         cur_file = os.path.join(data_dir, f)
         cur_feature = torch.load(cur_file)
-        cur_label = label_df.loc[(song, idx)].to_numpy()
 
-        # Ensure all samples are 3 seconds long
-        if cur_feature.shape[1] == expected_shape:
-            if song in train_keys:
-                features_train.append(cur_feature)
-                labels_train.append(cur_label)
+        if (song, idx) in label_df.index:
 
-            elif song in test_keys:
-                features_test.append(cur_feature)
-                labels_test.append(cur_label)
+            cur_label = label_df.loc[(song, idx)].to_numpy()
 
-            elif song in valid_keys:
-                features_valid.append(cur_feature)
-                labels_valid.append(cur_label)    
-        else:
-            print(f)
+            # Ensure all samples are 3 seconds long
+            if cur_feature.shape[1] == expected_shape:
+                if song in train_keys:
+                    features_train.append(cur_feature)
+                    labels_train.append(cur_label)
+
+                elif song in test_keys:
+                    features_test.append(cur_feature)
+                    labels_test.append(cur_label)
+
+                elif song in valid_keys:
+                    features_valid.append(cur_feature)
+                    labels_valid.append(cur_label)    
+            else:
+                print(f)
     
     features_train, labels_train = torch.stack(features_train).unsqueeze(1), torch.FloatTensor(labels_train)
     features_test, labels_test = torch.stack(features_test).unsqueeze(1), torch.FloatTensor(labels_test)
