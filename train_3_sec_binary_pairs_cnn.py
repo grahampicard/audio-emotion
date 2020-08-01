@@ -100,7 +100,6 @@ def test(model, dataloader, device, args):
         y_true.extend(target.data.cpu().tolist())
         n_correct += (y_pred == target).sum().detach().tolist()
         n_total += len(target)
-        print(n_correct / n_total)
 
     print("Average test loss: {}".format(test_loss/len(dataloader.dataset)))
     print("Test accuracy: {}".format(100. * n_correct/n_total))
