@@ -1,11 +1,12 @@
 import librosa
 import os
+import sklearn
 import torch
 
 
 def simple_transformer(mp3path, savedirectory='./data/interim/features/',
                        filename='output',
-                       transforms=['stft', 'wave', 'logmel', 'cqt'],
+                       transforms=['stft', 'wave', 'logmel', 'cqt', 'mfcc'],
                        sample_rate=32000, seconds=30, offset=0.0):
 
     """ Simple loader which will take a path/to/mp3 and convert it to
@@ -67,13 +68,22 @@ def simple_transformer(mp3path, savedirectory='./data/interim/features/',
             dir_path = os.path.join(savedirectory, output)
             if not os.path.exists(dir_path): os.makedirs(dir_path)
             
-
             harmonic,_ = librosa.effects.hpss(waveform)
             chroma = librosa.feature.chroma_cqt(y=harmonic, sr=sample_rate,
                                                 bins_per_octave=36)
-
             form = torch.Tensor(chroma)
             output_path = os.path.join(dir_path, f'{filename}.pt')
             torch.save(form, output_path)
+
+        if output == "mfcc":
+            dir_path = os.path.join(savedirectory, output)
+            if not os.path.exists(dir_path): os.makedirs(dir_path)
+                                    
+            mfccs = librosa.feature.mfcc(waveform, sr=sample_rate)
+            mfccs = sklearn.preprocessing.scale(mfccs, axis=1)
+            mfcc_tensor = torch.Tensor(mfccs)
+
+            output_path = os.path.join(dir_path, f'{filename}.pt')
+            torch.save(mfcc_tensor, output_path)
 
     return True
