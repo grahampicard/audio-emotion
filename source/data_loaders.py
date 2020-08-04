@@ -97,7 +97,10 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
         np.random.seed(seed)
 
     # do manual checks for segment. found by observing output from librosa
-    expected_shape = 188
+    if preprocessing != "wave":
+        expected_shape = 188
+    else:
+        expected_shape = 96000
 
     # load files
     data_dir = f'./data/interim/expanded-3secondsegments/{preprocessing}'
@@ -157,7 +160,12 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
         cur_label = label_df.loc[(song, idx)].to_numpy()
 
         # Ensure all samples are 30 seconds long
-        if cur_feature.shape[1] == expected_shape:
+        if preprocessing == 'wave':
+            shape_idx = 0
+        else:
+            shape_idx = 1
+
+        if cur_feature.shape[shape_idx] == expected_shape:
             if song in train_keys:
                 features_train.append(cur_feature)
                 labels_train.append(cur_label)

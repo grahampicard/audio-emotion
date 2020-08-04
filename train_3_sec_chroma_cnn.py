@@ -1,8 +1,12 @@
 import argparse
 import torch
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-from sklearn.metrics import f1_score
 import numpy as np
+import os
+import pandas as pd
+
+# function imports
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import f1_score, confusion_matrix
 
 # pytorch imports
 from torch import manual_seed
@@ -82,7 +86,7 @@ def test(model, dataloader, device, args):
     test_loss = 0.0
 
     n_correct, n_total = 0, 0
-    y_preds, y_true = [], []
+    y_preds, y_true, y_pvals = [], [], []
 
     for _, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
@@ -98,6 +102,7 @@ def test(model, dataloader, device, args):
 
         y_preds.extend(pred_index.data.cpu().tolist())
         y_true.extend(target_index.data.cpu().tolist())
+        y_pvals.append(output.detach().cpu().numpy())
         n_correct += (pred_index == target_index).sum()
         n_total += len(dataloader.dataset)
 
@@ -106,12 +111,16 @@ def test(model, dataloader, device, args):
     print("Test correct #: {}".format(n_correct))
     print("Test F1 score: {}".format(100. * f1_score(np.asarray(y_true), np.asarray(y_preds),
                                                        average='weighted')))
-    #pred.to_csv('predictions.csv')
 
-    #test_acc = accuracy_score(pred_index, target_index)
-    #print("Test accuracy: {}".format(test_acc))
+    output_df = pd.concat([pd.DataFrame(x) for x in y_pvals], axis=0)
+    output_df['pred'] = y_preds
+    output_df['true'] = y_true
+    output_df.to_csv(f'./data/processed/chroma/cnn-{args.model}-3s_32k-test-results.csv', index=False)
 
-    return
+    cf = pd.DataFrame(confusion_matrix(y_preds, y_true))
+    cf.index.name = 'y_preds'
+    cf.to_csv(f'./data/processed/chroma/cnn-{args.model}-3s_32k-test-confusion.csv')
+    return True
 
     #test_precision, test_recall, test_f1, _ = precision_recall_fscore_support(y>=0, pred>=0, average='binary')
 
@@ -167,9 +176,10 @@ if __name__ == "__main__":
         if (curr_valid_loss < min_valid_loss):
             min_valid_loss = curr_valid_loss
             if (args.save_model):
-                #torch.save(curr_model.state_dict(),"./data/processed/cnn-boilerplate.pt")
-                torch.save(curr_model, f"./data/processed/chroma-cnn-{args.model}-3s_32k.pt")
+                dir_path = "./data/processed/chroma/"
+                if not os.path.exists(dir_path): os.makedirs(dir_path)                
+                torch.save(curr_model, f"./data/processed/chroma/cnn-{args.model}-3s_32k.pt")
             print("Found new best model, saving to disk!")
 
-    best_model = torch.load(f"./data/processed/chroma-cnn-{args.model}-3s_32k.pt")
+    best_model = torch.load(f"./data/processed/chroma/cnn-{args.model}-3s_32k.pt")
     test(best_model, test_loader, device, args)
