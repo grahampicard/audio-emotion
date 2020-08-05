@@ -42,6 +42,11 @@ class TestDataloaders(unittest.TestCase):
         self.assertEqual(valid_features.shape[0], valid_labels.shape[0])
         self.assertEqual(test_features.shape[0], test_labels.shape[0])
 
+    def test_alt_labels_load(self):
+        train_features, train_labels, valid_features, valid_labels, test_features, test_labels = data_loaders.load_section_level_stft(label_type='happy-not-sad', dev=True)
+        self.assertEqual(train_features.shape[0], train_labels.shape[0])
+        self.assertEqual(valid_features.shape[0], valid_labels.shape[0])
+        self.assertEqual(test_features.shape[0], test_labels.shape[0])
 
 if __name__ == "__main__":
     unittest.main()

@@ -84,7 +84,7 @@ def test(model, dataloader, device, args):
     test_loss = 0.0
 
     n_correct, n_total = 0, 0
-    y_preds, y_true = [], []
+    y_preds, y_true, y_pvals = [], [], []
 
     for _, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
@@ -98,6 +98,7 @@ def test(model, dataloader, device, args):
 
         y_preds.extend(y_pred.data.cpu().tolist())
         y_true.extend(target.data.cpu().tolist())
+        y_pvals.append(output.detach().cpu().numpy())
         n_correct += (y_pred == target).sum().detach().tolist()
         n_total += len(target)
 
@@ -106,6 +107,15 @@ def test(model, dataloader, device, args):
     print("Test correct #: {}".format(n_correct))
     print("Test F1 score: {}".format(100. * f1_score(np.asarray(y_true), np.asarray(y_preds),
                                                        average='weighted')))
+
+    output_df = pd.concat([pd.DataFrame(x) for x in y_pvals], axis=0)
+    output_df['pred'] = y_preds
+    output_df['true'] = y_true
+    output_df.to_csv(f'./data/processed/stft-binary-pairs/cnn-{args.model}-3s_32k-test-results.csv', index=False)
+
+    cf = pd.DataFrame(confusion_matrix(y_preds, y_true))
+    cf.index.name = 'y_preds'
+    cf.to_csv(f'./data/processed/stft-binary-pairs/cnn-{args.model}-3s_32k-test-confusion.csv')
 
     return y_preds, y_true
 
@@ -172,10 +182,11 @@ if __name__ == "__main__":
             if (curr_valid_loss < min_valid_loss):
                 min_valid_loss = curr_valid_loss
                 if (args.save_model):
-                    #torch.save(curr_model.state_dict(),"./data/processed/cnn-boilerplate.pt")
-                    torch.save(curr_model, f"./data/processed/cnn-binary-{label}-{args.model}-3s_32k.pt")
+                    dir_path = "./data/processed/stft-binary-pairs/"
+                    if not os.path.exists(dir_path): os.makedirs(dir_path)
+                    torch.save(curr_model, f"./data/processed/stft-binary-pairs/cnn-{label}-{args.model}-3s_32k.pt")
                 print("Found new best model, saving to disk!")
 
-        best_model = torch.load(f"./data/processed/cnn-binary-{label}-{args.model}-3s_32k.pt")
+        best_model = torch.load(f"./data/processed/stft-binary-pairs/cnn-{label}-{args.model}-3s_32k.pt")
         pred, true = test(best_model, test_loader, device, args)
-        save_confusion(pred, true, f"./data/processed/cnn-binary-{label}-{args.model}-3s_32k-confusion.csv")
+        save_confusion(pred, true, f"./data/processed/stft-binary-pairs/cnn-{label}-{args.model}-3s_32k-confusion.csv")
