@@ -36,6 +36,7 @@ def train(model, optimizer, dataloader, device, epoch, args):
     # set model to train mode
     model.train()
     train_loss = 0.0
+    log = []
 
     for batch_idx, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
@@ -49,6 +50,9 @@ def train(model, optimizer, dataloader, device, epoch, args):
         train_loss += loss.item()
         optimizer.step()
 
+        result = {'epoch': epoch, 'loss': loss.item() / len(data), 'batch': batch_idx}    
+        log.append(result)        
+
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(dataloader.dataset),
@@ -57,7 +61,7 @@ def train(model, optimizer, dataloader, device, epoch, args):
     print("Epoch {} complete! Average training loss: {}".format(epoch,
         train_loss/len(dataloader.dataset)))
 
-    return model
+    return model, log
 
 
 def valid(model, dataloader, device, args):
@@ -78,7 +82,7 @@ def valid(model, dataloader, device, args):
     return valid_loss
 
 
-def test(model, dataloader, device, args):
+def test(model, dataloader, device, args, label):
 
     model.eval()
     test_loss = 0.0
@@ -111,12 +115,11 @@ def test(model, dataloader, device, args):
     output_df = pd.concat([pd.DataFrame(x) for x in y_pvals], axis=0)
     output_df['pred'] = y_preds
     output_df['true'] = y_true
-    output_df.to_csv(f'./data/processed/stft-binary-pairs/cnn-{args.model}-3s_32k-test-results.csv', index=False)
+    output_df.to_csv(f'./data/processed/stft-binary-pairs/cnn-{label}-{args.model}-3s_32k-test-results.csv', index=False)
 
     cf = pd.DataFrame(confusion_matrix(y_preds, y_true))
     cf.index.name = 'y_preds'
-    cf.to_csv(f'./data/processed/stft-binary-pairs/cnn-{args.model}-3s_32k-test-confusion.csv')
-
+    cf.to_csv(f'./data/processed/stft-binary-pairs/cnn-{label}-{args.model}-3s_32k-test-confusion.csv')
     return y_preds, y_true
 
     #test_precision, test_recall, test_f1, _ = precision_recall_fscore_support(y>=0, pred>=0, average='binary')
@@ -175,10 +178,13 @@ if __name__ == "__main__":
         optimizer = optim.Adam(model.parameters())
 
         min_valid_loss = float('Inf')
+        
+        full_log = []
 
         for epoch in range(1, args.epochs + 1):
-            curr_model = train(model, optimizer, train_loader, device, epoch, args)
+            curr_model, cur_log = train(model, optimizer, train_loader, device, epoch, args)
             curr_valid_loss = valid(curr_model, valid_loader, device, args)
+            full_log.extend(cur_log)
             if (curr_valid_loss < min_valid_loss):
                 min_valid_loss = curr_valid_loss
                 if (args.save_model):
@@ -188,5 +194,6 @@ if __name__ == "__main__":
                 print("Found new best model, saving to disk!")
 
         best_model = torch.load(f"./data/processed/stft-binary-pairs/cnn-{label}-{args.model}-3s_32k.pt")
-        pred, true = test(best_model, test_loader, device, args)
+        pred, true = test(best_model, test_loader, device, args, label)
         save_confusion(pred, true, f"./data/processed/stft-binary-pairs/cnn-{label}-{args.model}-3s_32k-confusion.csv")
+        pd.DataFrame(full_log).to_csv(f"./data/processed/stft-binary-pairs/cnn-{label}-{args.model}-3s_32k-training-loss.csv", index=False)

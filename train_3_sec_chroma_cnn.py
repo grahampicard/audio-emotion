@@ -6,7 +6,7 @@ import pandas as pd
 
 # function imports
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-from sklearn.metrics import f1_score, confusion_matrix
+from sklearn.metrics import f1_score, multilabel_confusion_matrix
 
 # pytorch imports
 from torch import manual_seed
@@ -20,7 +20,6 @@ from torch.utils.data.sampler import SubsetRandomSampler
 
 # user-created files
 from models.cnn_chroma_3_seconds import CNN_simple_3s_32k
-from models.cnn_chroma_3_seconds import CNN_dev_3s_32k
 from source.data_loaders import load_section_level_stft
 
 
@@ -38,6 +37,7 @@ def train(model, optimizer, dataloader, device, epoch, args):
     # set model to train mode
     model.train()
     train_loss = 0.0
+    log = []
 
     for batch_idx, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
@@ -51,6 +51,9 @@ def train(model, optimizer, dataloader, device, epoch, args):
         train_loss += loss.item()
         optimizer.step()
 
+        result = {'epoch': epoch, 'loss': loss.item() / len(data), 'batch': batch_idx}    
+        log.append(result)
+
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(dataloader.dataset),
@@ -59,7 +62,7 @@ def train(model, optimizer, dataloader, device, epoch, args):
     print("Epoch {} complete! Average training loss: {}".format(epoch,
         train_loss/len(dataloader.dataset)))
 
-    return model
+    return model, log
 
 
 def valid(model, dataloader, device, args):
@@ -86,7 +89,7 @@ def test(model, dataloader, device, args):
     test_loss = 0.0
 
     n_correct, n_total = 0, 0
-    y_preds, y_true, y_pvals = [], [], []
+    y_preds, y_true = [], []
 
     for _, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
@@ -94,17 +97,13 @@ def test(model, dataloader, device, args):
         loss = F.binary_cross_entropy(output, target)
         test_loss += loss.item()
 
-        pred = to_one_hot(output, device)
-        pred_index = torch.argmax(pred,1)
-        print(pred_index)
-        target_index = torch.argmax(target,1)
-        print(target_index)
+        np_output = np.array(output.round().cpu().detach().numpy())
+        np_target = np.array(target.detach().cpu().numpy())
 
-        y_preds.extend(pred_index.data.cpu().tolist())
-        y_true.extend(target_index.data.cpu().tolist())
-        y_pvals.append(output.detach().cpu().numpy())
-        n_correct += (pred_index == target_index).sum()
-        n_total += len(dataloader.dataset)
+        y_preds.extend(np_output)
+        y_true.extend(np_target)
+        n_correct += (np_output == np_target).sum()
+        n_total += np.product(np_output.shape)
 
     print("Average test loss: {}".format(test_loss/len(dataloader.dataset)))
     print("Test accuracy: {}".format(100. * n_correct/n_total))
@@ -112,17 +111,21 @@ def test(model, dataloader, device, args):
     print("Test F1 score: {}".format(100. * f1_score(np.asarray(y_true), np.asarray(y_preds),
                                                        average='weighted')))
 
-    output_df = pd.concat([pd.DataFrame(x) for x in y_pvals], axis=0)
-    output_df['pred'] = y_preds
-    output_df['true'] = y_true
+    y_preds, y_true = np.array(y_preds), np.array(y_true)
+    output_df = pd.concat([pd.DataFrame(y_preds), pd.DataFrame(y_true)], axis=1)
+    output_df.columns = [f'pred_{x}' for x in range(y_preds.shape[1])] + [f'true_{x}' for x in range(y_preds.shape[1])]
     output_df.to_csv(f'./data/processed/chroma/cnn-{args.model}-3s_32k-test-results.csv', index=False)
+    return y_preds, y_true
 
-    cf = pd.DataFrame(confusion_matrix(y_preds, y_true))
-    cf.index.name = 'y_preds'
+def save_confusion(pred, true, file_name, annotations=True):
+
+    cf = multilabel_confusion_matrix(pred, true)
+    cf = pd.DataFrame(cf.reshape(-1,2))
+    emotion_idx = range(pred.shape[1])
+    multi_idx = [(i, j) for i in emotion_idx for j in (0,1)]
+
+    cf.index = pd.MultiIndex.from_tuples(multi_idx, names=('emotion', 'tf'))
     cf.to_csv(f'./data/processed/chroma/cnn-{args.model}-3s_32k-test-confusion.csv')
-    return True
-
-    #test_precision, test_recall, test_f1, _ = precision_recall_fscore_support(y>=0, pred>=0, average='binary')
 
 
 if __name__ == "__main__":
@@ -139,6 +142,7 @@ if __name__ == "__main__":
     parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=True, help='For Saving the current Model')
     parser.add_argument('--model', type=str, default='simple')
+    parser.add_argument('--label', type=str, default='hard-labels')
     args = parser.parse_args()
     
     kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() & ~args.no_cuda else {}
@@ -148,7 +152,7 @@ if __name__ == "__main__":
         manual_seed(args.seed)
 
     # Load training data
-    train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_section_level_stft(preprocessing='chroma')
+    train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_section_level_stft(preprocessing='chroma', label_type=args.label)
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 
@@ -159,20 +163,16 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size, **kwargs)
 
     # Instantiate model
-    if args.model == 'simple':
-        model = CNN_simple_3s_32k().to(device)
-    elif args.model == 'dev':
-        model = CNN_dev_3s_32k().to(device)
-    else:
-        raise ValueError
-
+    model = CNN_simple_3s_32k().to(device)
     optimizer = optim.Adam(model.parameters())
-
-    min_valid_loss = float('Inf')
+    min_valid_loss = float('Inf')    
+    full_log = []
 
     for epoch in range(1, args.epochs + 1):
-        curr_model = train(model, optimizer, train_loader, device, epoch, args)
+        curr_model, cur_log = train(model, optimizer, train_loader, device, epoch, args)
         curr_valid_loss = valid(curr_model, valid_loader, device, args)
+        full_log.extend(cur_log)
+
         if (curr_valid_loss < min_valid_loss):
             min_valid_loss = curr_valid_loss
             if (args.save_model):
@@ -182,4 +182,6 @@ if __name__ == "__main__":
             print("Found new best model, saving to disk!")
 
     best_model = torch.load(f"./data/processed/chroma/cnn-{args.model}-3s_32k.pt")
-    test(best_model, test_loader, device, args)
+    pred, true = test(best_model, test_loader, device, args)
+    save_confusion(pred, true, f"./data/processed/chroma/cnn-{args.model}-3s_32k-confusion.csv", annotations=False)
+    pd.DataFrame(full_log).to_csv(f"./data/processed/chroma/cnn-{args.model}-3s_32k-training-loss.csv", index=False)

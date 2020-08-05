@@ -1,8 +1,12 @@
 import argparse
 import torch
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-from sklearn.metrics import f1_score
 import numpy as np
+import os
+import pandas as pd
+
+# function imports
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import f1_score, confusion_matrix
 
 # pytorch imports
 from torch import manual_seed
@@ -33,6 +37,7 @@ def train(model, optimizer, dataloader, device, epoch, args):
     # set model to train mode
     model.train()
     train_loss = 0.0
+    log = []
 
     for batch_idx, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
@@ -46,6 +51,9 @@ def train(model, optimizer, dataloader, device, epoch, args):
         train_loss += loss.item()
         optimizer.step()
 
+        result = {'epoch': epoch, 'loss': loss.item() / len(data), 'batch': batch_idx}    
+        log.append(result)
+
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(dataloader.dataset),
@@ -54,7 +62,7 @@ def train(model, optimizer, dataloader, device, epoch, args):
     print("Epoch {} complete! Average training loss: {}".format(epoch,
         train_loss/len(dataloader.dataset)))
 
-    return model
+    return model, log
 
 
 def valid(model, dataloader, device, args):
@@ -72,7 +80,6 @@ def valid(model, dataloader, device, args):
         valid_loss += loss.item()
 
     print("Average validation loss: {}".format(valid_loss/len(dataloader.dataset)))
-    print(len(dataloader.dataset))
     return valid_loss
 
 
@@ -82,7 +89,7 @@ def test(model, dataloader, device, args):
     test_loss = 0.0
 
     n_correct, n_total = 0, 0
-    y_preds, y_true = [], []
+    y_preds, y_true, y_pvals = [], [], []
 
     for _, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
@@ -96,6 +103,7 @@ def test(model, dataloader, device, args):
 
         y_preds.extend(y_pred.data.cpu().tolist())
         y_true.extend(target.data.cpu().tolist())
+        y_pvals.append(output.detach().cpu().numpy())
         n_correct += (y_pred == target).sum()
         n_total += len(dataloader.dataset)
 
@@ -104,14 +112,29 @@ def test(model, dataloader, device, args):
     print("Test correct #: {}".format(n_correct))
     print("Test F1 score: {}".format(100. * f1_score(np.asarray(y_true), np.asarray(y_preds),
                                                        average='weighted')))
-    #pred.to_csv('predictions.csv')
 
-    #test_acc = accuracy_score(pred_index, target_index)
-    #print("Test accuracy: {}".format(test_acc))
+    output_df = pd.concat([pd.DataFrame(x) for x in y_pvals], axis=0)
+    output_df['pred'] = y_preds
+    output_df['true'] = y_true
+    output_df.to_csv(f'./data/processed/stft-binary/cnn-{args.model}-3s_32k-test-results.csv', index=False)
 
-    return
+    cf = pd.DataFrame(confusion_matrix(y_preds, y_true))
+    cf.index.name = 'y_preds'
+    cf.to_csv(f'./data/processed/stft-binary/cnn-{args.model}-3s_32k-test-confusion.csv')
 
-    #test_precision, test_recall, test_f1, _ = precision_recall_fscore_support(y>=0, pred>=0, average='binary')
+    return y_preds, y_true
+
+
+def save_confusion(pred, true, file_name, annotations=True):
+
+    df = pd.DataFrame(confusion_matrix(pred, true))
+
+    if annotations:
+        df.columns = 'true_0', 'true_1'
+        df.index = 'pred_0', 'pred_1'
+        df.index.name = 'pred'
+
+    df.to_csv(file_name, index=True)
 
 
 if __name__ == "__main__":
@@ -128,6 +151,7 @@ if __name__ == "__main__":
     parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=True, help='For Saving the current Model')
     parser.add_argument('--model', type=str, default='simple')
+    parser.add_argument('--label', type=str, default='happy')
     args = parser.parse_args()
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() & ~args.no_cuda else {}
@@ -137,7 +161,7 @@ if __name__ == "__main__":
         manual_seed(args.seed)
 
     # Load training data
-    train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_section_level_stft(label_type='happy')
+    train_features, train_labels, valid_features, valid_labels, test_features, test_labels = load_section_level_stft(label_type=args.label)
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 
@@ -153,15 +177,22 @@ if __name__ == "__main__":
 
     min_valid_loss = float('Inf')
 
+    full_log = []
+
     for epoch in range(1, args.epochs + 1):
-        curr_model = train(model, optimizer, train_loader, device, epoch, args)
+        curr_model, cur_log = train(model, optimizer, train_loader, device, epoch, args)
         curr_valid_loss = valid(curr_model, valid_loader, device, args)
+        full_log.extend(cur_log)
+
         if (curr_valid_loss < min_valid_loss):
             min_valid_loss = curr_valid_loss
             if (args.save_model):
-                #torch.save(curr_model.state_dict(),"./data/processed/cnn-boilerplate.pt")
-                torch.save(curr_model, f"./data/processed/cnn-binary-happy-{args.model}-3s_32k.pt")
+                dir_path = "./data/processed/stft-binary/"
+                if not os.path.exists(dir_path): os.makedirs(dir_path)
+                torch.save(curr_model, f"./data/processed/stft-binary/cnn-{args.label}-{args.model}-3s_32k.pt")
             print("Found new best model, saving to disk!")
 
-    best_model = torch.load(f"./data/processed/cnn-binary-happy-{args.model}-3s_32k.pt")
-    test(best_model, test_loader, device, args)
+    best_model = torch.load(f"./data/processed/stft-binary/cnn-{args.label}-{args.model}-3s_32k.pt")
+    pred, true = test(best_model, test_loader, device, args)
+    save_confusion(pred, true, f"./data/processed/stft-binary/cnn-{args.label}-{args.model}-3s_32k-confusion.csv")
+    pd.DataFrame(full_log).to_csv(f"./data/processed/stft-binary/cnn-{args.label}-{args.model}-3s_32k-training-loss.csv", index=False)
