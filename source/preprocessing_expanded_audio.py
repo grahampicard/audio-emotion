@@ -4,7 +4,7 @@ import pandas as pd
 from source.preprocessing_audio import simple_transformer
 
 
-def match_expanded_dataset(seconds, dev=False, transforms=['stft']):
+def match_expanded_dataset(seconds, dev=False, transforms=['stft', 'wave', 'logmel', 'cqt', 'mfcc']):
     """
     Parameters
     ----------------

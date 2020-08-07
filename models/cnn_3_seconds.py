@@ -45,35 +45,3 @@ class CNN_simple_3s_32k(nn.Module):
         x = self.fc2(x)
         # return F.softmax(x, dim=1)
         return F.sigmoid(x)
-
-class CNN_dev_3s_32k(nn.Module):
-    """ Simplified model to enable more rapid development"""
-
-    def __init__(self):
-        super(CNN_dev_3s_32k, self).__init__()
-
-        self.conv1 = nn.Conv2d(1, 8, 3)
-        self.conv2 = nn.Conv2d(8, 16, 3)
-        self.conv3 = nn.Conv2d(16, 16, 3)
-        self.conv4 = nn.Conv2d(16, 8, 3)
-        self.conv5 = nn.Conv2d(8, 2, 3)
-
-        self.pool1 = nn.MaxPool2d(2, stride=2)
-        self.pool2 = nn.MaxPool2d(4, stride=4)
-
-        self.fc1 = nn.Linear(90, 36)
-        self.fc2 = nn.Linear(36, 18)
-
-        self.drp = nn.Dropout2d(0.5)
-
-    def forward(self, x):
-        x = self.drp(self.pool1(F.relu(self.conv1(x))))
-        x = self.drp(self.pool1(F.relu(self.conv2(x))))
-        x = self.drp(self.pool1(F.relu(self.conv3(x))))
-        x = self.drp(self.pool1(F.relu(self.conv4(x))))
-        x = self.drp(self.pool2(F.relu(self.conv5(x))))
-        x = x.view(-1, 90)
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        # return F.softmax(x, dim=1)
-        return F.sigmoid(x)
