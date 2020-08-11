@@ -1,6 +1,12 @@
 import argparse
-import pandas as pd
 import torch
+import numpy as np
+import os
+import pandas as pd
+
+# function imports
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import f1_score, multilabel_confusion_matrix
 
 # pytorch imports
 from torch import manual_seed
@@ -30,34 +36,85 @@ def train(model, optimizer, dataloader, device, epoch, args):
     
     # set model to train mode
     model.train()
+    train_loss = 0.0
+    log = []
 
     for batch_idx, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
-
         optimizer.zero_grad()
 
         output = model(data)
 
         loss = F.binary_cross_entropy(output, target)
         loss.backward()
+        train_loss += loss.item()
         optimizer.step()
+
+        result = {'epoch': epoch, 'loss': loss.item() / len(data), 'batch': batch_idx}    
+        log.append(result)
 
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(dataloader.dataset),
                 100. * batch_idx / len(dataloader), loss.item()))
 
-    return model
+    print("Epoch {} complete! Average training loss: {}".format(epoch,
+        train_loss/len(dataloader.dataset)))
 
-def test(model, dataloader, device, args):
+    return model, log
+
+
+def valid(model, dataloader, device, args):
+
+    model.eval()
+    valid_loss = 0.0
 
     for batch_idx, (data, target) in enumerate(dataloader):
         data, target = data.to(device), target.to(device)
 
         output = model(data)
-        pred = to_one_hot(output, device)
 
-    pass 
+        loss = F.binary_cross_entropy(output, target)
+        valid_loss += loss.item()
+
+    print("Average validation loss: {}".format(valid_loss/len(dataloader.dataset)))
+    print(len(dataloader.dataset))
+    return valid_loss
+
+
+def test(model, dataloader, device, args):
+
+    model.eval()
+    test_loss = 0.0
+
+    n_correct, n_total = 0, 0
+    y_preds, y_true = [], []
+
+    for _, (data, target) in enumerate(dataloader):
+        data, target = data.to(device), target.to(device)
+        output = model(data)
+        loss = F.binary_cross_entropy(output, target)
+        test_loss += loss.item()
+
+        np_output = np.array(output.round().cpu().detach().numpy())
+        np_target = np.array(target.detach().cpu().numpy())
+
+        y_preds.extend(np_output)
+        y_true.extend(np_target)
+        n_correct += (np_output == np_target).sum()
+        n_total += np.product(np_output.shape)
+
+    print("Average test loss: {}".format(test_loss/len(dataloader.dataset)))
+    print("Test accuracy: {}".format(100. * n_correct/n_total))
+    print("Test correct #: {}".format(n_correct))
+    print("Test F1 score: {}".format(100. * f1_score(np.asarray(y_true), np.asarray(y_preds),
+                                                       average='weighted')))
+
+    y_preds, y_true = np.array(y_preds), np.array(y_true)
+    output_df = pd.concat([pd.DataFrame(y_preds), pd.DataFrame(y_true)], axis=1)
+    output_df.columns = [f'pred_{x}' for x in range(y_preds.shape[1])] + [f'true_{x}' for x in range(y_preds.shape[1])]
+    output_df.to_csv(f'./data/processed/chroma/cnn-{args.model}-3s_32k-test-results.csv', index=False)
+    return y_preds, y_true
 
 
 if __name__ == "__main__":

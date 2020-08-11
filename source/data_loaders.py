@@ -4,9 +4,6 @@ import pandas as pd
 import torch
 
 
-<<<<<<< HEAD
-def load_stft_data(split=0.8, seed=123, csv_file='one_hot_top_emotion'):
-=======
 def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
                             label_type='soft-labels', dev=False, preprocessing='stft'):
     """
@@ -28,7 +25,6 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
     else:
         shape_idx = 1
         expected_shape = 188
->>>>>>> master
 
     # load files
     data_dir = f'./data/interim/expanded-3secondsegments/{preprocessing}'
@@ -55,10 +51,6 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
     test_keys, test_counter = [], 0
     train_keys = []
 
-<<<<<<< HEAD
-    # add options for labels to use!  
-    label_df = pd.read_csv(f'./data/interim/labels/{csv_file}.csv', index_col='song')
-=======
     for key in keys:
 
         if valid_counter < n_valid:
@@ -77,7 +69,6 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
         raise ValueError
     
     label_df = pd.read_csv(csv_file, index_col=['source', 'index'])
->>>>>>> master
 
     # get features and labels
     features_train, labels_train, = [], [] 
@@ -115,11 +106,10 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
     features_test, labels_test = torch.stack(features_test).unsqueeze(1), torch.FloatTensor(labels_test)
     features_valid, labels_valid = torch.stack(features_valid).unsqueeze(1), torch.FloatTensor(labels_valid)
 
-<<<<<<< HEAD
     return features_train, labels_train, features_test, labels_test, train_split, test_split
 
 
-def load_spotify_metadata(split=0.8, seed=123, csv_file='one_hot_top_emotion'):
+def load_spotify_metadata(valid_split=0.8, test_split=0.9, seed=123, csv_file='one_hot_top_emotion'):
 
     # add options for labels to use!
     
@@ -142,16 +132,15 @@ def load_spotify_metadata(split=0.8, seed=123, csv_file='one_hot_top_emotion'):
     np.random.seed(seed)
     np.random.shuffle(idxs)
 
-    train_split = idxs[:split_idx]
-    test_split = idxs[split_idx:]
+    train_idx = idxs[:valid_split]
+    valid_idx = idxs[valid_split:test_split]
+    test_idx = idxs[test_split;]
     
     features = torch.FloatTensor(features)
     labels = torch.FloatTensor(labels)
 
-    features_train, labels_train = features[train_split], labels[train_split]
-    features_test, labels_test = features[test_split], labels[test_split]
+    features_train, labels_train = features[train_idx], labels[train_idx]
+    features_test, labels_test = features[test_idx], labels[test_idx]
+    features_valid, labels_valid = features[valid_idx], labels[valid_idx]
 
-    return features_train, labels_train, features_test, labels_test, train_split, test_split
-=======
-    return features_train, labels_train, features_valid, labels_valid, features_test, labels_test
->>>>>>> master
+    return features_train, labels_train, features_test, labels_test, features_valid, labels_valid

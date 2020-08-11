@@ -42,5 +42,5 @@ if __name__ == "__main__":
         except:
             print(idx, artist, track)
 
-    with open('data/raw/spotify_features.json', 'w') as f:
+    with open('data/interim/spotify/spotify_features.json', 'w') as f:
         json.dump(results, f, indent='  ')
