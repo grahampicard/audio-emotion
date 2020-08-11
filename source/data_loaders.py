@@ -4,7 +4,6 @@ import pandas as pd
 import torch
 
 
-<<<<<<< HEAD
 def generic_loader(valid_split=0.8, test_split=0.9, seed=None,
                    label_type='labels', preprocessing='stft',
                    cur_dir='data/interim/example', label_idx='source',
@@ -73,8 +72,6 @@ def generic_loader(valid_split=0.8, test_split=0.9, seed=None,
 
 
 
-=======
->>>>>>> master
 def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
                             label_type='soft-labels', dev=False, preprocessing='stft'):
     """
