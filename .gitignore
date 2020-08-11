@@ -1,5 +1,6 @@
-data/interim/features/stft
-data/interim/features/wave
+data/interim/*
 data/raw/*
 data/raw - (unzip into a folder named raw).zip
+data/test/*
 */__pycache__/
+data/*/*.pt

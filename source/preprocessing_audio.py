@@ -1,40 +1,102 @@
 import librosa
+import numpy as np
 import os
+import sklearn
 import torch
 
 
-def simple_stft_transform(mp3path, savepath='./data/interim/', filename='output', output_types=['stft', 'wave'], sample_rate=32000, seconds=30):
-    """ Simple loader which will take a path/to/mp3 and convert it to numerical waveform files.
+def simple_transformer(mp3path, savedirectory='./data/interim/features/',
+                       filename='output',
+                       transforms=['stft', 'wave', 'logmel', 'cqt', 'mfcc'],
+                       sample_rate=32000, seconds=30, offset=0.0):
+
+    """ Simple loader which will take a path/to/mp3 and convert it to
+        numerical waveform files.
 
         Parameters
         ----------------
+        mp3path         path to input file e.g.             `/data/raw/f.mp3`
+        savedirectory   directory where output is stored    `/interim/outputs/`
+        filename        stem used to create `.pt` files     `sample-output`
+        transforms      transformations applied to audio    `['stft']`
+        sample_rate     number of cycles sampled per second `22050`
+        seconds         duration of the clip                `30`
+        offset          start time duration                 `0.0`
 
-        mp3path         path to input file
-        savepath        path to save output
-        filename        stem which will be used to create `.pt` files
-        output_types    transformations to be applied to file 
-        sample_rate     number of cycles measured per second
-        seconds         duration of the clip
+
+        Transforms
+        ---------------
+        STFT            Short-Time Fourier Transform (Spectrogram)
+        Wave            Waveform (no transform)
+        Log-Mel         Logged values of the Mel Spectrogram
+        CQT             not implemented
+        MFCC            Mel-Frequency Cepstral Coeffcient
     """
 
-    if isinstance(output_types, str):
-        output_types = [output_types]
+    if isinstance(transforms, str): transforms = [transforms]
 
-    waveform, _ = librosa.load(mp3path, sr=sample_rate, duration=seconds)
+    # load librosa file
+    waveform, _ = librosa.load(mp3path, sr=sample_rate, duration=seconds,
+                               offset=offset)
 
-    if waveform.shape[0] != sample_rate * seconds:
-        return False
-
-    for output in output_types:
-        if output == "stft":    
-            spec = abs(librosa.stft(waveform))
-            spec = torch.Tensor(spec)
-            output_path = os.path.join(savepath, 'stft/', f'{filename}.pt')
-            torch.save(spec, output_path)
-
+    # add transforms here
+    for output in transforms:
         if output == "wave":
-            wave = torch.Tensor(waveform)     
-            output_path = os.path.join(savepath, 'wave/', f'{filename}.pt')
+            dir_path = os.path.join(savedirectory, output)
+            if not os.path.exists(dir_path): os.makedirs(dir_path)
+
+            wave = torch.Tensor(waveform)
+            output_path = os.path.join(dir_path, f'{filename}.pt')
             torch.save(wave, output_path)
+
+        elif output == "stft":
+            dir_path = os.path.join(savedirectory, output)
+            if not os.path.exists(dir_path): os.makedirs(dir_path)
+
+            spec = librosa.stft(waveform)
+            spec_db = librosa.amplitude_to_db(abs(spec))
+            spec_db = torch.Tensor(spec_db)
+            output_path = os.path.join(dir_path, f'{filename}.pt')
+            torch.save(spec_db, output_path)
+
+        elif output == "logmel":
+            dir_path = os.path.join(savedirectory, output)
+            if not os.path.exists(dir_path): os.makedirs(dir_path)
+
+            mel = librosa.feature.melspectrogram(y=waveform, sr=sample_rate)
+            mel = mel.astype(np.float16)
+            logmel = np.log(10000 * mel + 1)
+            logmel = torch.Tensor(logmel)
+            output_path = os.path.join(dir_path, f'{filename}.pt')
+            torch.save(logmel, output_path)
+
+        elif output == "cqt":
+            pass
+            #c = librosa.cqt(y=waveform, sr=sample_rate)
+
+        elif output == "chroma":
+            dir_path = os.path.join(savedirectory, output)
+            if not os.path.exists(dir_path): os.makedirs(dir_path)
+            
+            harmonic,_ = librosa.effects.hpss(waveform)
+            chroma = librosa.feature.chroma_cqt(y=harmonic, sr=sample_rate,
+                                                bins_per_octave=36)
+            form = torch.Tensor(chroma)
+            output_path = os.path.join(dir_path, f'{filename}.pt')
+            torch.save(form, output_path)
+
+        elif output == "mfcc":
+            dir_path = os.path.join(savedirectory, output)
+            if not os.path.exists(dir_path): os.makedirs(dir_path)
+                                    
+            mfccs = librosa.feature.mfcc(waveform, sr=sample_rate)
+            mfccs = sklearn.preprocessing.scale(mfccs, axis=1)
+            mfcc_tensor = torch.Tensor(mfccs)
+
+            output_path = os.path.join(dir_path, f'{filename}.pt')
+            torch.save(mfcc_tensor, output_path)
+
+        else:
+            raise ValueError("Enter a valid transform")
 
     return True
