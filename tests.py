@@ -9,7 +9,6 @@ class TestPreprocessing(unittest.TestCase):
             mp3path = './data/raw/CAL500_32kps/2pac-trapped.mp3',
             savedirectory='./data/test/',
             filename='test-file',
-            transforms=['stft'],
             sample_rate=32000,
             seconds=30,
             offset=15.0
@@ -24,6 +23,37 @@ class TestPreprocessing(unittest.TestCase):
         self.assertEqual(test[2].shape[0], test[3].shape[0])
         self.assertEqual(test[4].shape[0], test[5].shape[0])
 
+class TestDataloaders(unittest.TestCase):
+
+    def test_stft_load(self):
+        train_features, train_labels, valid_features, valid_labels, test_features, test_labels = data_loaders.load_section_level_stft(preprocessing='stft', dev=True)
+        self.assertEqual(train_features.shape[0], train_labels.shape[0])
+        self.assertEqual(valid_features.shape[0], valid_labels.shape[0])
+        self.assertEqual(test_features.shape[0], test_labels.shape[0])
+
+    def test_chroma_load(self):
+        train_features, train_labels, valid_features, valid_labels, test_features, test_labels = data_loaders.load_section_level_stft(preprocessing='chroma', dev=True)
+        self.assertEqual(train_features.shape[0], train_labels.shape[0])
+        self.assertEqual(valid_features.shape[0], valid_labels.shape[0])
+        self.assertEqual(test_features.shape[0], test_labels.shape[0])
+
+    def test_mfcc_load(self):
+        train_features, train_labels, valid_features, valid_labels, test_features, test_labels = data_loaders.load_section_level_stft(preprocessing='mfcc', dev=True)
+        self.assertEqual(train_features.shape[0], train_labels.shape[0])
+        self.assertEqual(valid_features.shape[0], valid_labels.shape[0])
+        self.assertEqual(test_features.shape[0], test_labels.shape[0])
+
+    def test_wave_load(self):
+        train_features, train_labels, valid_features, valid_labels, test_features, test_labels = data_loaders.load_section_level_stft(preprocessing='wave', dev=True)
+        self.assertEqual(train_features.shape[0], train_labels.shape[0])
+        self.assertEqual(valid_features.shape[0], valid_labels.shape[0])
+        self.assertEqual(test_features.shape[0], test_labels.shape[0])
+
+    def test_alt_labels_load(self):
+        train_features, train_labels, valid_features, valid_labels, test_features, test_labels = data_loaders.load_section_level_stft(label_type='happy-not-sad', dev=True)
+        self.assertEqual(train_features.shape[0], train_labels.shape[0])
+        self.assertEqual(valid_features.shape[0], valid_labels.shape[0])
+        self.assertEqual(test_features.shape[0], test_labels.shape[0])
 
 if __name__ == "__main__":
     unittest.main()
