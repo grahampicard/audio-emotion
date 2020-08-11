@@ -4,7 +4,7 @@ import pandas as pd
 from source.preprocessing_audio import simple_transformer
 
 
-def match_expanded_dataset(seconds, dev=False, transforms=['stft', 'wave', 'logmel', 'cqt', 'mfcc']):
+def match_expanded_dataset(seconds, dev=False, transforms=['stft', 'wave', 'logmel', 'cqt', 'mfcc', 'chroma']):
     """
     Parameters
     ----------------
@@ -12,11 +12,11 @@ def match_expanded_dataset(seconds, dev=False, transforms=['stft', 'wave', 'logm
     dev       set as true to test out func      False
 
 
-    Take MP3 audio files and apply preprocessing functions to run a 
-    short-time Fourier transform on each MP3 file. 
+    Take MP3 audio files and apply preprocessing functions to run a
+    short-time Fourier transform on each MP3 file.
 
     This script collects path names for MP3s and outputs `.pt` files
-    with STFT to view audio frequencies. 
+    with STFT to view audio frequencies.
 
     Folder conventions
 
@@ -87,4 +87,3 @@ def match_expanded_dataset(seconds, dev=False, transforms=['stft', 'wave', 'logm
     segments_soft.to_csv(os.path.join(segment_path,'labels/soft-labels.csv'), index=False)
 
     return True
-1
