@@ -4,43 +4,36 @@ import pandas as pd
 import torch
 
 
-def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
-                   label_type='one-hot', sample_length=15, preprocessing='stft'):
+def generic_loader(valid_split=0.8, test_split=0.9, seed=None,
+                   label_type='labels', preprocessing='stft',
+                   cur_dir='data/interim/example', label_idx='source',
+                   label_dir=None):
     """
     Parameters
     ----------------
     valid_split     point on interval [0,1] to split train/valid    0.8
     test_split      point on interval [0,1] to split valid/test     0.9
     seed            use for reproducable results                    123 
-    label_type      either using one-hot, hard, or soft labels      'one-hot'
-    sample_length   how long we want the samples to be              10
-
-
-    Loads a {sample_length} sample of preprocessed spectrogram. Assumes
-    a given validation size and testing size.
+    label_type      use the name of the label file      
+    preprocessing   directory name for preprocessing type
+    cur_dir         directory where data is stored
+    label_idx       the UUID for each song (needs to be same as .pt
+                    filename for each song)
     
     Assumptions: 
     1.  there is only one sample per song
-    2.  there is only one label record (soft/hard/one-hot) per song
- 
+    2.  there is only one label record per song
+    3.  the .pt file name matches an index column `label_idx`
     """
 
     # do manual checks for segment. found by observing output from librosa
-    if sample_length == 15:
-        expected_shape = 938 
-    elif sample_length == 30:
-        expected_shape = 1876
-    else:
-        raise ValueError
-
     # load files
-    data_dir = f'./data/interim/{sample_length}secondsamples/stft'
+    data_dir = os.path.join(cur_dir, preprocessing)
     tensor_files = os.listdir(data_dir)
 
     # add options for labels to use!
-    if label_type == 'soft': csv_file = 'multi_label_emotions'
-    if label_type == 'one-hot': csv_file = 'one_hot_top_emotion'
-    label_df = pd.read_csv(f'./data/interim/{sample_length}secondsamples/labels/{csv_file}.csv', index_col='song')
+    label_dir = os.path.join(cur_dir, 'labels', f'{label_type}.csv')
+    label_df = pd.read_csv(label_dir, index_col=label_idx)
 
     # add features
     features = []
@@ -54,9 +47,8 @@ def load_stft_data(valid_split=0.8, test_split=0.9, seed=None,
         cur_label = label_df.loc[song].to_numpy()
 
         # Ensure all samples are 30 seconds long
-        if cur_song.shape[1] == expected_shape:
-            features.append(cur_song)
-            labels.append(cur_label)
+        features.append(cur_song)
+        labels.append(cur_label)
 
     # create train & test splits
     size = len(features)

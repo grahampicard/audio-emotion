@@ -5,7 +5,7 @@ from source import data_loaders
 class TestPreprocessing(unittest.TestCase):
 
     def test_transformer(self):
-        test = preprocessing_audio.simple_stft_transform(
+        test = preprocessing_audio.simple_transformer(
             mp3path = './data/raw/CAL500_32kps/2pac-trapped.mp3',
             savedirectory='./data/test/',
             filename='test-file',
@@ -17,15 +17,13 @@ class TestPreprocessing(unittest.TestCase):
 
         self.assertTrue(test)
 
-class TestLoaders(unittest.TestCase):
+    def test_generic_loader(self):
+        test = data_loaders.generic_loader()
 
-    def test_cal500_loader(self):
-        train_features, train_labels, \
-        test_features, test_labels = data_loaders.load_stft_data()        
+        self.assertEqual(test[0].shape[0], test[1].shape[0])
+        self.assertEqual(test[2].shape[0], test[3].shape[0])
+        self.assertEqual(test[4].shape[0], test[5].shape[0])
 
-        self.assertEqual(res[0][0], 395)
-        self.assertEqual(res[0][2] = 1025)
-        self.assertEqual(res[0][2] = 1025)
 
 if __name__ == "__main__":
     unittest.main()
