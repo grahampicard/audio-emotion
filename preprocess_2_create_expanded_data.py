@@ -4,7 +4,6 @@ import pandas as pd
 from source.preprocessing_audio import simple_transformer
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     seconds = 3
     dev=False
     transforms=['wave', 'stft', 'logmel', 'chroma', 'mfcc']
@@ -61,7 +60,3 @@ if __name__ == "__main__":
 
     segments_soft = segments_soft.drop(columns=['start_time', 'duration', 'end_time'])
     segments_soft.to_csv(os.path.join(segment_path,'labels/soft-labels.csv'), index=False)
-=======
-    match_expanded_dataset(3, transforms=['logmel', 'mfcc', 'chroma'])
-    
->>>>>>> master
