@@ -4,6 +4,74 @@ import pandas as pd
 import torch
 
 
+def generic_loader(valid_split=0.8, test_split=0.9, seed=None,
+                   label_type='labels', preprocessing='stft',
+                   cur_dir='data/interim/example', label_idx='source',
+                   label_dir=None):
+    """
+    Parameters
+    ----------------
+    valid_split     point on interval [0,1] to split train/valid    0.8
+    test_split      point on interval [0,1] to split valid/test     0.9
+    seed            use for reproducable results                    123 
+    label_type      use the name of the label file      
+    preprocessing   directory name for preprocessing type
+    cur_dir         directory where data is stored
+    label_idx       the UUID for each song (needs to be same as .pt
+                    filename for each song)
+    
+    Assumptions: 
+    1.  there is only one sample per song
+    2.  there is only one label record per song
+    3.  the .pt file name matches an index column `label_idx`
+    """
+
+    # do manual checks for segment. found by observing output from librosa
+    # load files
+    data_dir = os.path.join(cur_dir, preprocessing)
+    tensor_files = os.listdir(data_dir)
+
+    # add options for labels to use!
+    label_dir = os.path.join(cur_dir, 'labels', f'{label_type}.csv')
+    label_df = pd.read_csv(label_dir, index_col=label_idx)
+
+    # add features
+    features = []
+    labels = []
+
+    # Load data
+    for f in tensor_files:
+        song = f.replace('.pt', '')
+        cur_file = os.path.join(data_dir, f)
+        cur_song = torch.load(cur_file)
+        cur_label = label_df.loc[song].to_numpy()
+
+        # Ensure all samples are 30 seconds long
+        features.append(cur_song)
+        labels.append(cur_label)
+
+    # create train & test splits
+    size = len(features)
+    idxs = list(range(size))
+
+    if seed is not None: 
+        np.random.seed(seed)
+        
+    np.random.shuffle(idxs)
+
+    train_idx, valid_idx, test_idx = np.split(idxs, [int(valid_split * size), int(test_split * size)])
+
+    features = torch.stack(features).unsqueeze(1)
+    labels = torch.FloatTensor(labels)
+
+    features_train, labels_train = features[train_idx], labels[train_idx]
+    features_valid, labels_valid = features[valid_idx], labels[valid_idx]
+    features_test, labels_test = features[test_idx], labels[test_idx]
+
+    return features_train, labels_train, features_valid, labels_valid, features_test, labels_test
+
+
+
 def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
                             label_type='soft-labels', dev=False, preprocessing='stft'):
     """

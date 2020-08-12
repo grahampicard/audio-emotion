@@ -16,6 +16,13 @@ class TestPreprocessing(unittest.TestCase):
 
         self.assertTrue(test)
 
+    def test_generic_loader(self):
+        test = data_loaders.generic_loader()
+
+        self.assertEqual(test[0].shape[0], test[1].shape[0])
+        self.assertEqual(test[2].shape[0], test[3].shape[0])
+        self.assertEqual(test[4].shape[0], test[5].shape[0])
+
 class TestDataloaders(unittest.TestCase):
 
     def test_stft_load(self):
