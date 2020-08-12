@@ -13,6 +13,7 @@ if __name__ == "__main__":
                 'liveness', 'valence', 'tempo', 'time_signature']
 
         df = pd.DataFrame(data)[cols]
+        df = df.rename(columns={'cal_id': 'source'})
 
     dir_path = "./data/interim/spotify"
     if not os.path.exists(dir_path): os.makedirs(dir_path)
@@ -33,4 +34,5 @@ if __name__ == "__main__":
     labels.columns = cols
     labels = labels[emotion_cols]
     labels.columns = [x.replace('Emotion-', '').replace('_/_', '_').lower() for x in labels.columns]
+    labels.index.name = 'source'
     labels.to_csv(f'{dir_path}/labels.csv')

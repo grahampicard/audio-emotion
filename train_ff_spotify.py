@@ -46,6 +46,8 @@ def train(model, optimizer, dataloader, device, epoch, args):
         output = model(data)
 
         loss = F.binary_cross_entropy(output, target)
+
+        # https://sebastianraschka.com/faq/docs/pytorch-crossentropy.html
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
@@ -56,7 +58,7 @@ def train(model, optimizer, dataloader, device, epoch, args):
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(dataloader.dataset),
-                100. * batch_idx / len(dataloader), loss.item()))
+                100. * batch_idx / len(dataloader), loss.item()/len(data)))
 
     print("Epoch {} complete! Average training loss: {}".format(epoch,
         train_loss/len(dataloader.dataset)))
@@ -78,7 +80,6 @@ def valid(model, dataloader, device, args):
         valid_loss += loss.item()
 
     print("Average validation loss: {}".format(valid_loss/len(dataloader.dataset)))
-    print(len(dataloader.dataset))
     return valid_loss
 
 
@@ -107,15 +108,23 @@ def test(model, dataloader, device, args):
     print("Average test loss: {}".format(test_loss/len(dataloader.dataset)))
     print("Test accuracy: {}".format(100. * n_correct/n_total))
     print("Test correct #: {}".format(n_correct))
-    print("Test F1 score: {}".format(100. * f1_score(np.asarray(y_true), np.asarray(y_preds),
-                                                       average='weighted')))
 
     y_preds, y_true = np.array(y_preds), np.array(y_true)
     output_df = pd.concat([pd.DataFrame(y_preds), pd.DataFrame(y_true)], axis=1)
     output_df.columns = [f'pred_{x}' for x in range(y_preds.shape[1])] + [f'true_{x}' for x in range(y_preds.shape[1])]
-    output_df.to_csv(f'./data/processed/chroma/cnn-{args.model}-3s_32k-test-results.csv', index=False)
+    output_df.to_csv(f'./data/processed/spotify/cnn-{args.model}-3s_32k-test-results.csv', index=False)
     return y_preds, y_true
 
+
+def save_confusion(pred, true, file_name, annotations=True):
+
+    cf = multilabel_confusion_matrix(pred, true)
+    cf = pd.DataFrame(cf.reshape(-1,2))
+    emotion_idx = range(pred.shape[1])
+    multi_idx = [(i, j) for i in emotion_idx for j in (0,1)]
+
+    cf.index = pd.MultiIndex.from_tuples(multi_idx, names=('emotion', 'tf'))
+    cf.to_csv(f'./data/processed/spotify/cnn-{args.model}-3s_32k-test-confusion.csv')
 
 if __name__ == "__main__":
 
@@ -123,37 +132,47 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Spectrogram + Emotion CNN')
     parser.add_argument('--batch-size', type=int, default=100, metavar='N', help='input batch size for training (default: 5)')
     parser.add_argument('--test-batch-size', type=int, default=5, metavar='N', help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=50, metavar='N', help='number of epochs to train (default: 5)')
+    parser.add_argument('--epochs', type=int, default=5, metavar='N', help='number of epochs to train (default: 5)')
     parser.add_argument('--lr', type=float, default=0.01, metavar='LR', help='learning rate (default: 0.01)')
     parser.add_argument('--no-cuda', action='store_true', default=False, help='disables CUDA training')
-    parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
-    parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
+    parser.add_argument('--log-interval', type=int, default=5, metavar='N', help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=True, help='For Saving the current Model')
+    parser.add_argument('--model', type=str, default='simple')
     args = parser.parse_args()
     kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    manual_seed(args.seed)
     
     # Load training data
-    train_features, train_labels, test_features, test_labels, train_idxs, test_idxs = load_spotify_metadata(split=.8, csv_file='emotional_scores')
+    train_features, train_labels, test_features, test_labels, valid_features, valid_labels = load_spotify_metadata()
     train_dataset = TensorDataset(train_features, train_labels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
+
+    valid_dataset = TensorDataset(valid_features, valid_labels)
+    valid_loader = DataLoader(valid_dataset, batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
     test_dataset = TensorDataset(test_features, test_labels)
     test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size, **kwargs)
 
     # Instantiate model
     model = FCNN().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-3)
+    min_valid_loss = float('Inf')        
+    full_log = []
 
     for epoch in range(1, args.epochs + 1):
-        train(model, optimizer, train_loader, device, epoch, args)
+        curr_model, cur_log = train(model, optimizer, train_loader, device, epoch, args)
+        curr_valid_loss = valid(curr_model, valid_loader, device, args)
+        full_log.extend(cur_log)
 
-    if (args.save_model):
-        torch.save(model.state_dict(),"./data/processed/cnn-boilerplate.pt")
+        if (curr_valid_loss < min_valid_loss):
+            min_valid_loss = curr_valid_loss
+            if (args.save_model):
+                dir_path = "./data/processed/spotify/"
+                if not os.path.exists(dir_path): os.makedirs(dir_path)                
+                torch.save(curr_model, f"./data/processed/spotify/cnn-{args.model}-3s_32k.pt")
+            print("Found new best model, saving to disk!")
 
-        train_idx_df = pd.DataFrame(train_idxs, columns=['idx']).assign(category='train')
-        test_idx_df = pd.DataFrame(test_idxs, columns=['idx']).assign(category='test')
-        pd.concat([train_idx_df, test_idx_df]).to_csv('./data/processed/cnn-boilerplate-split.csv', index=False)
-
-    pred = model(test_features.cuda())
+    best_model = torch.load(f"./data/processed/spotify/cnn-{args.model}-3s_32k.pt")
+    pred, true = test(best_model, test_loader, device, args)
+    save_confusion(pred, true, f"./data/processed/spotify/cnn-{args.model}-3s_32k-confusion.csv", annotations=False)
+    pd.DataFrame(full_log).to_csv(f"./data/processed/spotify/cnn-{args.model}-3s_32k-training-loss.csv", index=False)

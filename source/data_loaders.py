@@ -109,12 +109,12 @@ def load_section_level_stft(valid_split=0.8, test_split=0.9, seed=None,
     return features_train, labels_train, features_test, labels_test, train_split, test_split
 
 
-def load_spotify_metadata(valid_split=0.8, test_split=0.9, seed=123, csv_file='one_hot_top_emotion'):
+def load_spotify_metadata(valid_split=0.8, test_split=0.9, seed=123, csv_file='labels'):
 
     # add options for labels to use!
     
-    label_df = pd.read_csv(f'./data/interim/labels/{csv_file}.csv', index_col='song')
-    feature_df = pd.read_csv('./data/interim/metadata/spotify_features.csv', index_col='cal_id')
+    label_df = pd.read_csv(f'./data/interim/spotify/{csv_file}.csv', index_col='source')
+    feature_df = pd.read_csv('./data/interim/spotify/spotify_features.csv', index_col='source')
 
     label_df = label_df.reindex(feature_df.index)
 
@@ -127,20 +127,21 @@ def load_spotify_metadata(valid_split=0.8, test_split=0.9, seed=123, csv_file='o
     # create train & test splits
     size = len(features)
     idxs = list(range(size))
-    split_idx = int(np.floor(split * size))
+    valid_split_idx = int(np.floor(valid_split * size))
+    test_split_idx = int(np.floor(test_split * size))
 
     np.random.seed(seed)
     np.random.shuffle(idxs)
 
-    train_idx = idxs[:valid_split]
-    valid_idx = idxs[valid_split:test_split]
-    test_idx = idxs[test_split;]
+    train_idxs = idxs[:valid_split_idx]
+    valid_idxs = idxs[valid_split_idx:test_split_idx]
+    test_idxs = idxs[test_split_idx:]
     
     features = torch.FloatTensor(features)
     labels = torch.FloatTensor(labels)
 
-    features_train, labels_train = features[train_idx], labels[train_idx]
-    features_test, labels_test = features[test_idx], labels[test_idx]
-    features_valid, labels_valid = features[valid_idx], labels[valid_idx]
+    features_train, labels_train = features[train_idxs], labels[train_idxs]
+    features_test, labels_test = features[test_idxs], labels[test_idxs]
+    features_valid, labels_valid = features[valid_idxs], labels[valid_idxs]
 
     return features_train, labels_train, features_test, labels_test, features_valid, labels_valid
